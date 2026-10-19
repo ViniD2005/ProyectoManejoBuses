@@ -1,0 +1,24 @@
+:root {
+  --color-primario: #1f4e5f;
+  --color-acento: #e8a317;
+  --color-texto: #1f2a33;
+  --color-fondo: #ffffff;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color: var(--color-texto);
+  background: var(--color-fondo);
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; }
+
+.layout__header {
+  padding: 1rem 2rem;
+  background: var(--color-primario);
+}
+.layout__marca {
+  color: #fff;
+  font-weight: 700;
+  font-size: 1.25rem;
+  text-decoration: none;
+}
+.layout__contenido { padding: 2rem; }
