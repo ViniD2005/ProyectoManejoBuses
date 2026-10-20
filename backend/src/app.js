@@ -13,6 +13,7 @@ app.get('/api/salud', (req, res) => {
 
 // Aquí se registrarán los módulos: app.use('/api/ciudades', require('./modules/ciudades/ciudades.routes'))
 app.use('/api/cooperativas', require('./modules/cooperativas/cooperativas.routes'));
+app.use('/api/buses', require('./modules/buses/buses.routes'));
 
 // Ruta no encontrada
 app.use((req, res) => {
