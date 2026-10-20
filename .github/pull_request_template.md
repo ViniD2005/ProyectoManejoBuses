@@ -1,37 +1,5 @@
   GNU nano 9.2                       .github/pull_request_template.md
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 ## ¿Qué cambia?
 
 ## ¿Cómo probarlo?
