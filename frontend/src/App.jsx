@@ -3,6 +3,7 @@ import { Routes, Route } from 'react-router-dom'
 import MainLayout from './layouts/MainLayout.jsx'
 import Inicio from './pages/Inicio.jsx'
 import Cooperativas from './pages/Cooperativas.jsx'
+import Buses from './pages/Buses.jsx'
 import NoEncontrado from './pages/NoEncontrado.jsx'
 
 // Frente D - Busqueda de viajes y asientos
@@ -18,34 +19,23 @@ function App() {
 
         {/* Pagina principal */}
         <Route path="/" element={<Inicio />} />
-<Route path="/" element={<Inicio />} />
+          {/* Módulo de Cooperativas */}
+          <Route path="/cooperativas" element={<Cooperativas />} />
 
-{/* Frente D - Busqueda de viajes */}
-<Route path="/viajes" element={<BuscarViajes />} />
+          {/* Frente B - Buses */}
+          <Route path="/buses" element={<Buses />} />
 
-{/* Frente D - Resultados de busqueda */}
-<Route
-  path="/viajes/resultados"
-  element={<ResultadosViajes />}
-/>
+          {/* Frente D - Búsqueda de viajes */}
+          <Route path="/viajes" element={<BuscarViajes />} />
 
-{/* Frente D - Detalle del viaje */}
-<Route
-  path="/viajes/:id"
-  element={<DetalleViaje />}
-/>
+          {/* Frente D - Resultados de búsqueda */}
+          <Route path="/viajes/resultados" element={<ResultadosViajes />} />
 
-{/* Frente D - Seleccion de asientos */}
-<Route
-  path="/viajes/:id/asientos"
-  element={<SeleccionAsientos />}
-/>
+          {/* Frente D - Detalle del viaje */}
+          <Route path="/viajes/:id" element={<DetalleViaje />} />
 
-{/* Módulo de Cooperativas */}
-<Route path="/cooperativas" element={<Cooperativas />} />
-
-{/* Pagina no encontrada */}
-<Route path="*" element={<NoEncontrado />} />
+          {/* Frente D - Selección de asientos */}
+          <Route path="/viajes/:id/asientos" element={<SeleccionAsientos />} />
       </Route>
       <Route path="*" element={<NoEncontrado />} />
     </Routes>

@@ -24,6 +24,7 @@ app.use('/api/viajes', require('./modules/viajes/viajes.routes'));
 
 // Modulo de cooperativas
 app.use('/api/cooperativas', require('./modules/cooperativas/cooperativas.routes'));
+app.use('/api/buses', require('./modules/buses/buses.routes'));
 
 app.use((req, res) => {
   res.status(404).json({
