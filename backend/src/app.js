@@ -15,20 +15,15 @@ app.get('/api/salud', (req, res) => {
   res.json({ estado: 'ok' })
 })
 
-// ========================================
+// ===================================
 // REGISTRO DE MODULOS
-// ========================================
+// ===================================
 
 // Frente D - Busqueda de viajes y asientos
-app.use('/api/viajes', require('./modules/viajes/viajes.routes'))
+app.use('/api/viajes', require('./modules/viajes/viajes.routes'));
 
-// Los demas modulos se agregaran cuando esten listos
-// Ejemplo:
-// app.use('/api/ciudades', require('./modules/ciudades/ciudades.routes'))
-
-// ========================================
-// RUTA NO ENCONTRADA
-// ========================================
+// Modulo de cooperativas
+app.use('/api/cooperativas', require('./modules/cooperativas/cooperativas.routes'));
 
 app.use((req, res) => {
   res.status(404).json({
