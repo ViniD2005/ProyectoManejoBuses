@@ -4,6 +4,7 @@ import MainLayout from './layouts/MainLayout.jsx'
 import Inicio from './pages/Inicio.jsx'
 import Cooperativas from './pages/Cooperativas.jsx'
 import Buses from './pages/Buses.jsx'
+import Frecuencias from './pages/cooperativa/Frecuencias.jsx'
 import NoEncontrado from './pages/NoEncontrado.jsx'
 
 // Frente B - Flota (Tipos de Asiento)
@@ -28,6 +29,8 @@ function App() {
           {/* Frente B - Buses y Tipos de Asiento */}
           <Route path="/buses" element={<Buses />} />
           <Route path="/cooperativa/tipos-asiento" element={<TiposAsiento />} />
+          {/* Frente C - Gestión de frecuencias */}
+          <Route path="/frecuencias" element={<Frecuencias />} />
 
           {/* Frente D - Búsqueda de viajes */}
           <Route path="/viajes" element={<BuscarViajes />} />
