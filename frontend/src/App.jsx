@@ -7,6 +7,9 @@ import Buses from './pages/Buses.jsx'
 import Frecuencias from './pages/cooperativa/Frecuencias.jsx'
 import NoEncontrado from './pages/NoEncontrado.jsx'
 
+// Frente B - Flota (Tipos de Asiento)
+import TiposAsiento from './pages/cooperativa/TiposAsiento.jsx'
+
 // Frente D - Busqueda de viajes y asientos
 import BuscarViajes from './pages/cliente/BuscarViajes.jsx'
 import ResultadosViajes from './pages/cliente/ResultadosViajes.jsx'
@@ -22,9 +25,10 @@ function App() {
         <Route path="/" element={<Inicio />} />
           {/* Módulo de Cooperativas */}
           <Route path="/cooperativas" element={<Cooperativas />} />
-
-          {/* Frente B - Buses */}
+          
+          {/* Frente B - Buses y Tipos de Asiento */}
           <Route path="/buses" element={<Buses />} />
+          <Route path="/cooperativa/tipos-asiento" element={<TiposAsiento />} />
           {/* Frente C - Gestión de frecuencias */}
           <Route path="/frecuencias" element={<Frecuencias />} />
 
