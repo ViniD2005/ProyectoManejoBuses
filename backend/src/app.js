@@ -19,8 +19,8 @@ app.get('/api/salud', (req, res) => {
 // REGISTRO DE MODULOS
 // ===================================
 
-// Frente D - Busqueda de viajes y asientos
-app.use('/api/viajes', require('./modules/viajes/viajes.routes'));
+// Tarea 0 - Autenticacion
+app.use('/api/auth', require('./modules/auth/auth.routes'))
 
 // Modulo de cooperativas
 app.use('/api/cooperativas', require('./modules/cooperativas/cooperativas.routes'));
@@ -39,12 +39,22 @@ app.use((req, res) => {
 // ========================================
 
 app.use((err, req, res, next) => {
-  console.error(err)
+  // Errores conocidos de PostgreSQL
+  if (err.code === '23505') {
+    return res.status(409).json({ mensaje: 'Ya existe un registro con esos datos' })
+  }
+  if (err.code === '23503') {
+    return res.status(409).json({ mensaje: 'El registro está relacionado con otros datos' })
+  }
+  if (err.code === '23P01') {
+    return res.status(409).json({ mensaje: 'El asiento ya está vendido en ese tramo' })
+  }
+
+  if (!err.status) console.error(err)
 
   res.status(err.status || 500).json({
-    mensaje: err.status
-      ? err.message
-      : 'Error interno del servidor'
+    mensaje: err.status ? err.message : 'Error interno del servidor',
+    detalles: err.detalles,
   })
 })
 
