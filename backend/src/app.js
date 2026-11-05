@@ -30,6 +30,8 @@ app.use('/api/cooperativas', require('./modules/cooperativas/cooperativas.routes
 app.use('/api/buses', require('./modules/buses/buses.routes'));
 // Frente B - Flota (Tipos de Asiento)
 app.use('/api/tipos-asiento', require('./modules/tipos-asiento/tipos-asiento.routes'));
+// Modulo de compras
+app.use('/api/compras', require('./modules/compras/compras.routes'));
 
 app.use((req, res) => {
   res.status(404).json({
