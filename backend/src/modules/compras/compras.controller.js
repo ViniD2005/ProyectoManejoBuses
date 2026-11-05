@@ -51,8 +51,21 @@ async function obtenerDetalleCompra(req, res, next) {
   }
 }
 
+async function cancelarCompra(req, res, next) {
+  try {
+    const usuarioId = req.usuario.id
+    const { id } = req.params
+
+    const resultado = await comprasService.cancelarCompra(id, usuarioId)
+    return res.json(resultado)
+  } catch (error) {
+    next(error)
+  }
+}
+
 module.exports = {
   crearCompra,
   obtenerMisCompras,
-  obtenerDetalleCompra
+  obtenerDetalleCompra,
+  cancelarCompra
 }
