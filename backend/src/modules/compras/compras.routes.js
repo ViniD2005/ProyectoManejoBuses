@@ -10,4 +10,8 @@ router.post('/', comprasController.crearCompra)
 
 router.get('/mis-compras', comprasController.obtenerMisCompras)
 
+router.get('/:id', comprasController.obtenerDetalleCompra)
+
+router.delete('/:id', comprasController.cancelarCompra)
+
 module.exports = router
