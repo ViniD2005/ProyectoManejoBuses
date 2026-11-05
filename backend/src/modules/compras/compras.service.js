@@ -53,7 +53,6 @@ async function crearCompra({ usuarioId, frecuenciaId, asientos, metodoPago }) {
   }
 }
 
-
 async function obtenerComprasPorUsuario(usuarioId) {
   const query = `
     SELECT c.id, c.fecha_compra, c.total, c.estado, c.metodo_pago,
@@ -66,7 +65,6 @@ async function obtenerComprasPorUsuario(usuarioId) {
   const result = await db.query(query, [usuarioId])
   return result.rows
 }
-
 
 async function obtenerCompraPorId(compraId, usuarioId) {
   const queryCompra = `
@@ -91,9 +89,41 @@ async function obtenerCompraPorId(compraId, usuarioId) {
   }
 }
 
+async function cancelarCompra(compraId, usuarioId) {
+  const client = await db.getClient()
+  try {
+    await client.query('BEGIN')
+
+    const res = await client.query(
+      `UPDATE compras SET estado = 'cancelada' WHERE id = $1 AND usuario_id = $2 RETURNING id`,
+      [compraId, usuarioId]
+    )
+
+    if (res.rows.length === 0) {
+      const err = new Error('Compra no encontrada o no pertenece al usuario')
+      err.status = 404
+      throw err
+    }
+
+    await client.query(
+      `UPDATE pasajes SET estado = 'cancelado' WHERE compra_id = $1`,
+      [compraId]
+    )
+
+    await client.query('COMMIT')
+    return { mensaje: 'Compra cancelada exitosamente' }
+  } catch (error) {
+    await client.query('ROLLBACK')
+    throw error
+  } finally {
+    client.release()
+  }
+}
+
 module.exports = {
   verificarDisponibilidadAsientos,
   crearCompra,
   obtenerComprasPorUsuario,
-  obtenerCompraPorId
+  obtenerCompraPorId,
+  cancelarCompra
 }
