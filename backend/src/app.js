@@ -22,6 +22,9 @@ app.get('/api/salud', (req, res) => {
 // Tarea 0 - Autenticacion
 app.use('/api/auth', require('./modules/auth/auth.routes'))
 
+// Frente D - Busqueda de viajes y asientos
+app.use('/api/viajes', require('./modules/viajes/viajes.routes'));
+
 // Modulo de cooperativas
 app.use('/api/cooperativas', require('./modules/cooperativas/cooperativas.routes'));
 app.use('/api/buses', require('./modules/buses/buses.routes'));
