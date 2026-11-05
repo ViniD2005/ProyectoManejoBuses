@@ -10,28 +10,57 @@ app.use(cors({
 
 app.use(express.json())
 
-// Endpoint de salud: confirma que la API está funcionando
+// ========================================
+// ENDPOINT DE SALUD
+// ========================================
+
+// Confirma que la API esta funcionando
 app.get('/api/salud', (req, res) => {
   res.json({ estado: 'ok' })
 })
 
-// ===================================
+// ========================================
 // REGISTRO DE MODULOS
-// ===================================
+// ========================================
 
 // Tarea 0 - Autenticacion
 app.use('/api/auth', require('./modules/auth/auth.routes'))
 
+// Tarea 0 - Ciudades
+app.use('/api/ciudades', require('./modules/ciudades/ciudades.routes'))
+
 // Frente D - Busqueda de viajes y asientos
-app.use('/api/viajes', require('./modules/viajes/viajes.routes'));
+app.use('/api/viajes', require('./modules/viajes/viajes.routes'))
 
 // Modulo de cooperativas
-app.use('/api/cooperativas', require('./modules/cooperativas/cooperativas.routes'));
-app.use('/api/buses', require('./modules/buses/buses.routes'));
-// Frente B - Flota (Tipos de Asiento)
-app.use('/api/tipos-asiento', require('./modules/tipos-asiento/tipos-asiento.routes'));
-// Modulo de compras
-app.use('/api/compras', require('./modules/compras/compras.routes'));
+app.use('/api/cooperativas', require('./modules/cooperativas/cooperativas.routes'))
+
+// Frente B - Modulo de buses
+app.use('/api/buses', require('./modules/buses/buses.routes'))
+
+// Frente B - Tipos de asiento
+app.use('/api/tipos-asiento', require('./modules/tipos-asiento/tipos-asiento.routes'))
+
+// ========================================
+// FRENTE C - FERNANDO
+// FRECUENCIAS Y PARADAS
+// ========================================
+
+// Registrar rutas del modulo de frecuencias
+app.use(
+  '/api/frecuencias',
+  require('./modules/frecuencias/frecuencias.routes')
+)
+
+// ========================================
+// MODULO DE COMPRAS
+// ========================================
+
+app.use('/api/compras', require('./modules/compras/compras.routes'))
+
+// ========================================
+// RUTAS NO ENCONTRADAS
+// ========================================
 
 app.use((req, res) => {
   res.status(404).json({
@@ -44,23 +73,44 @@ app.use((req, res) => {
 // ========================================
 
 app.use((err, req, res, next) => {
-  // Errores conocidos de PostgreSQL
+
+  // Registro duplicado en PostgreSQL
   if (err.code === '23505') {
-    return res.status(409).json({ mensaje: 'Ya existe un registro con esos datos' })
+    return res.status(409).json({
+      mensaje: 'Ya existe un registro con esos datos'
+    })
   }
+
+  // Error de clave foranea
   if (err.code === '23503') {
-    return res.status(409).json({ mensaje: 'El registro está relacionado con otros datos' })
+    return res.status(409).json({
+      mensaje: 'El registro está relacionado con otros datos'
+    })
   }
+
+  // Conflicto de asiento vendido
   if (err.code === '23P01') {
-    return res.status(409).json({ mensaje: 'El asiento ya está vendido en ese tramo' })
+    return res.status(409).json({
+      mensaje: 'El asiento ya está vendido en ese tramo'
+    })
   }
 
-  if (!err.status) console.error(err)
+  // Registrar errores inesperados
+  if (!err.status) {
+    console.error(err)
+  }
 
+  // Respuesta de error
   res.status(err.status || 500).json({
-    mensaje: err.status ? err.message : 'Error interno del servidor',
-    detalles: err.detalles,
+    mensaje: err.status
+      ? err.message
+      : 'Error interno del servidor',
+    detalles: err.detalles
   })
 })
+
+// ========================================
+// EXPORTAR APLICACION
+// ========================================
 
 module.exports = app
