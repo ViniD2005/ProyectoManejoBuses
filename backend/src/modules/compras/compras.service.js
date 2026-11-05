@@ -53,7 +53,47 @@ async function crearCompra({ usuarioId, frecuenciaId, asientos, metodoPago }) {
   }
 }
 
+
+async function obtenerComprasPorUsuario(usuarioId) {
+  const query = `
+    SELECT c.id, c.fecha_compra, c.total, c.estado, c.metodo_pago,
+           f.origen, f.destino, f.fecha_salida, f.hora_salida
+    FROM compras c
+    JOIN frecuencias f ON c.frecuencia_id = f.id
+    WHERE c.usuario_id = $1
+    ORDER BY c.fecha_compra DESC
+  `
+  const result = await db.query(query, [usuarioId])
+  return result.rows
+}
+
+
+async function obtenerCompraPorId(compraId, usuarioId) {
+  const queryCompra = `
+    SELECT c.*, f.origen, f.destino, f.fecha_salida, f.hora_salida
+    FROM compras c
+    JOIN frecuencias f ON c.frecuencia_id = f.id
+    WHERE c.id = $1 AND c.usuario_id = $2
+  `
+  const resCompra = await db.query(queryCompra, [compraId, usuarioId])
+  if (resCompra.rows.length === 0) return null
+
+  const queryPasajes = `
+    SELECT p.id, p.asiento_id, p.precio, p.pasajero_nombre, p.pasajero_identificacion, p.estado
+    FROM pasajes p
+    WHERE p.compra_id = $1
+  `
+  const resPasajes = await db.query(queryPasajes, [compraId])
+
+  return {
+    ...resCompra.rows[0],
+    pasajes: resPasajes.rows
+  }
+}
+
 module.exports = {
   verificarDisponibilidadAsientos,
-  crearCompra
+  crearCompra,
+  obtenerComprasPorUsuario,
+  obtenerCompraPorId
 }
