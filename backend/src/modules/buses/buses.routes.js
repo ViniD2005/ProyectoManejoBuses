@@ -1,11 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const busesController = require('./buses.controller');
-// const { verificarToken, verificarRolAdmin } = require('../../middlewares/authMiddleware'); // Ajusta según tus middlewares
+const { verificarToken, verificarRol } = require('../../middlewares/authMiddleware');
 
-router.get('/', busesController.getBuses);
-router.post('/', busesController.createBus);
-router.put('/:id', busesController.updateBus);
-router.patch('/:id/estado', busesController.updateEstadoBus);
+// Todas las rutas exigen autenticación y rol de cooperativa
+router.use(verificarToken, verificarRol(['cooperativa', 'admin']));
+
+router.get('/', busesController.obtenerBuses);
+router.post('/', busesController.crearBus);
+router.put('/:id', busesController.actualizarBus);
+router.patch('/:id/estado', busesController.cambiarEstadoBus);
 
 module.exports = router;
