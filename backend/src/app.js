@@ -22,6 +22,9 @@ app.get('/api/salud', (req, res) => {
 // Tarea 0 - Autenticacion
 app.use('/api/auth', require('./modules/auth/auth.routes'))
 
+// Tarea 0 - Ciudades (modulo de referencia)
+app.use('/api/ciudades', require('./modules/ciudades/ciudades.routes'))
+
 // Frente D - Busqueda de viajes y asientos
 app.use('/api/viajes', require('./modules/viajes/viajes.routes'));
 
