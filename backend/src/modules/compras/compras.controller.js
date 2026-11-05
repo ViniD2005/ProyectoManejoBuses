@@ -25,6 +25,34 @@ async function crearCompra(req, res, next) {
   }
 }
 
+async function obtenerMisCompras(req, res, next) {
+  try {
+    const usuarioId = req.usuario.id
+    const compras = await comprasService.obtenerComprasPorUsuario(usuarioId)
+    return res.json(compras)
+  } catch (error) {
+    next(error)
+  }
+}
+
+async function obtenerDetalleCompra(req, res, next) {
+  try {
+    const usuarioId = req.usuario.id
+    const { id } = req.params
+
+    const compra = await comprasService.obtenerCompraPorId(id, usuarioId)
+    if (!compra) {
+      return res.status(404).json({ mensaje: 'Compra no encontrada' })
+    }
+
+    return res.json(compra)
+  } catch (error) {
+    next(error)
+  }
+}
+
 module.exports = {
-  crearCompra
+  crearCompra,
+  obtenerMisCompras,
+  obtenerDetalleCompra
 }
