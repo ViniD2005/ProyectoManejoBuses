@@ -1,5 +1,26 @@
 const pool = require('../../config/db');
 
+function errorHttp(mensaje, status, detalles) {
+  const error = new Error(mensaje);
+  error.status = status;
+  error.detalles = detalles;
+  return error;
+}
+
+// Valida los datos antes de guardar: así responde 400 con el detalle
+// de cada campo en lugar de un error 500 de la base de datos.
+function validarCooperativa(datos) {
+  const errores = {};
+  if (!datos.nombre?.trim()) errores.nombre = 'El nombre es obligatorio';
+  if (!/^\d{13}$/.test(datos.ruc || '')) errores.ruc = 'El RUC debe tener 13 dígitos';
+  if (datos.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(datos.email)) {
+    errores.email = 'El correo no es válido';
+  }
+  if (Object.keys(errores).length) {
+    throw errorHttp('Revisa los datos de la cooperativa', 400, errores);
+  }
+}
+
 const listarCooperativas = async () => {
   const resultado = await pool.query(
     'SELECT id, nombre, ruc, telefono, email, direccion, logo_url, activa, creado_en FROM cooperativa ORDER BY id ASC'
@@ -16,6 +37,7 @@ const obtenerCooperativaPorId = async (id) => {
 };
 
 const crearCooperativa = async (datos) => {
+  validarCooperativa(datos);
   const { nombre, ruc, telefono, email, direccion, logo_url } = datos;
   const resultado = await pool.query(
     `INSERT INTO cooperativa (nombre, ruc, telefono, email, direccion, logo_url, activa)
@@ -27,6 +49,7 @@ const crearCooperativa = async (datos) => {
 };
 
 const actualizarCooperativa = async (id, datos) => {
+  validarCooperativa(datos);
   const { nombre, ruc, telefono, email, direccion, logo_url } = datos;
   const resultado = await pool.query(
     `UPDATE cooperativa 
