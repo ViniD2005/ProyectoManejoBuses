@@ -1,17 +1,14 @@
 const { Router } = require('express')
-const comprasController = require('./compras.controller')
-const authMiddleware = require('../../middlewares/auth')
+const controlador = require('./compras.controller')
+const { autenticar, permitirRoles } = require('../../middlewares/auth')
 
-const router = Router()
+const rutas = Router()
 
-router.use(authMiddleware)
+// Público: métodos de pago y tipos de descuento para el formulario de compra
+rutas.get('/catalogos', controlador.catalogos)
 
-router.post('/', comprasController.crearCompra)
+// Solo clientes con sesión
+rutas.post('/', autenticar, permitirRoles('cliente'), controlador.crear)
+rutas.get('/mias', autenticar, permitirRoles('cliente'), controlador.listarMias)
 
-router.get('/mis-compras', comprasController.obtenerMisCompras)
-
-router.get('/:id', comprasController.obtenerDetalleCompra)
-
-router.delete('/:id', comprasController.cancelarCompra)
-
-module.exports = router
+module.exports = rutas

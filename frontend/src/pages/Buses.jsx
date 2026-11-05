@@ -1,161 +1,173 @@
-import React, { useEffect, useState } from 'react';
-import api from '../services/api';
+import { useEffect, useState } from 'react'
+import api from '../services/api.js'
+
+const FORM_VACIO = {
+  numero_disco: '',
+  placa: '',
+  marca_chasis: '',
+  marca_carroceria: '',
+  anio_fabricacion: '',
+  pisos: 1,
+  cantidad_asientos: 40,
+  tipo_asiento_id: '',
+}
+
+function mensajeDeError(err) {
+  return err.response?.data?.mensaje || 'No se pudo conectar con el servidor'
+}
 
 export default function Buses() {
-    const [buses, setBuses] = useState([]);
-    const [tiposAsiento, setTiposAsiento] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
-    const [mensajeExito, setMensajeExito] = useState('');
+  const [buses, setBuses] = useState([])
+  const [tipos, setTipos] = useState([])
+  const [form, setForm] = useState(FORM_VACIO)
+  const [idEdicion, setIdEdicion] = useState(null)
+  const [errores, setErrores] = useState({})
+  const [error, setError] = useState('')
+  const [aviso, setAviso] = useState('')
 
-    const [form, setForm] = useState({
-        numero_disco: '',
-        placa: '',
-        marca_chasis: '',
-        marca_carroceria: '',
-        anio_fabricacion: '',
-        pisos: 1,
-        cantidad_asientos: '',
-        tipo_asiento_id: 1
-    });
+  const cargarBuses = () =>
+    api.get('/buses')
+      .then(({ data }) => setBuses(data))
+      .catch((err) => setError(mensajeDeError(err)))
 
-    const cargarDatos = async () => {
-        try {
-            setLoading(true);
-            const [resBuses, resTipos] = await Promise.all([
-                api.get('/buses'),
-                api.get('/tipos-asiento').catch(() => ({ data: [] }))
-            ]);
-            setBuses(resBuses.data);
-            setTiposAsiento(resTipos.data);
-        } catch (err) {
-            setError('Error al cargar la información de buses.');
-        } finally {
-            setLoading(false);
-        }
-    };
+  useEffect(() => {
+    cargarBuses()
+    api.get('/tipos-asiento')
+      .then(({ data }) => setTipos(data))
+      .catch((err) => setError(mensajeDeError(err)))
+  }, [])
 
-    useEffect(() => {
-        cargarDatos();
-    }, []);
+  const cambiar = (e) => setForm({ ...form, [e.target.name]: e.target.value })
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setError('');
-        setMensajeExito('');
-        try {
-            await api.post('/buses', form);
-            setMensajeExito(`Bus registrado con éxito con ${form.cantidad_asientos} asientos.`);
-            setForm({
-                numero_disco: '',
-                placa: '',
-                marca_chasis: '',
-                marca_carroceria: '',
-                anio_fabricacion: '',
-                pisos: 1,
-                cantidad_asientos: '',
-                tipo_asiento_id: 1
-            });
-            cargarDatos();
-        } catch (err) {
-            setError(err.response?.data?.error || 'Error al registrar el bus.');
-        }
-    };
+  const limpiar = () => {
+    setForm(FORM_VACIO)
+    setIdEdicion(null)
+    setErrores({})
+  }
 
-    const cambiarEstado = async (id, estadoActual) => {
-        try {
-            await api.patch(`/buses/${id}/estado`, { activo: !estadoActual });
-            cargarDatos();
-        } catch (err) {
-            setError('Error al cambiar el estado del bus.');
-        }
-    };
+  const guardar = async (e) => {
+    e.preventDefault()
+    setError('')
+    setAviso('')
+    setErrores({})
+    try {
+      if (idEdicion) {
+        await api.put(`/buses/${idEdicion}`, form)
+        setAviso('Bus actualizado correctamente')
+      } else {
+        const { data } = await api.post('/buses', form)
+        setAviso(`Bus registrado con ${data.total_asientos} asientos`)
+      }
+      limpiar()
+      cargarBuses()
+    } catch (err) {
+      setError(mensajeDeError(err))
+      setErrores(err.response?.data?.detalles || {})
+    }
+  }
 
-    return (
-        <div className="max-w-7xl mx-auto p-6">
-            <h1 className="text-3xl font-bold mb-6 text-gray-800">Gestión de Buses</h1>
+  const editar = (bus) => {
+    setIdEdicion(bus.id)
+    setForm({ ...FORM_VACIO, ...bus, anio_fabricacion: bus.anio_fabricacion || '' })
+    setAviso('')
+  }
 
-            {error && <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">{error}</div>}
-            {mensajeExito && <div className="mb-4 p-3 bg-green-100 text-green-700 rounded">{mensajeExito}</div>}
+  const alternarEstado = async (bus) => {
+    try {
+      await api.patch(`/buses/${bus.id}/estado`, { activo: !bus.activo })
+      cargarBuses()
+    } catch (err) {
+      setError(mensajeDeError(err))
+    }
+  }
 
-            {/* Formulario de Registro */}
-            <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow-md mb-8 grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">N° Disco</label>
-                    <input type="text" value={form.numero_disco} onChange={e => setForm({...form, numero_disco: e.target.value})} required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm border p-2" />
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">Placa</label>
-                    <input type="text" value={form.placa} onChange={e => setForm({...form, placa: e.target.value})} required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm border p-2" />
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">Chasis</label>
-                    <input type="text" value={form.marca_chasis} onChange={e => setForm({...form, marca_chasis: e.target.value})} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm border p-2" />
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">Carrocería</label>
-                    <input type="text" value={form.marca_carroceria} onChange={e => setForm({...form, marca_carroceria: e.target.value})} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm border p-2" />
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">Año Fabricación</label>
-                    <input type="number" value={form.anio_fabricacion} onChange={e => setForm({...form, anio_fabricacion: e.target.value})} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm border p-2" />
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">Pisos</label>
-                    <input type="number" min="1" max="2" value={form.pisos} onChange={e => setForm({...form, pisos: Number(e.target.value)})} required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm border p-2" />
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">Cantidad Asientos</label>
-                    <input type="number" min="10" max="100" value={form.cantidad_asientos} onChange={e => setForm({...form, cantidad_asientos: e.target.value})} required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm border p-2" />
-                </div>
-                <div className="flex items-end">
-                    <button type="submit" className="w-full bg-blue-600 text-white p-2 rounded-md hover:bg-blue-700 font-medium">Registrar Bus</button>
-                </div>
-            </form>
+  const campo = (name, texto, props = {}) => (
+    <div className="mb-3">
+      <label className="form-label" htmlFor={name}>{texto}</label>
+      <input id={name} name={name} className="form-control" value={form[name]} onChange={cambiar} {...props} />
+      {errores[name] && <small style={{ color: '#b3261e' }}>{errores[name]}</small>}
+    </div>
+  )
 
-            {/* Tabla de Buses */}
-            <div className="bg-white shadow-md rounded-lg overflow-hidden">
-                <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                        <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Disco</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Placa</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Chasis / Carrocería</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pisos</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Asientos</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                        {loading ? (
-                            <tr><td colSpan="7" className="px-6 py-4 text-center">Cargando...</td></tr>
-                        ) : buses.length === 0 ? (
-                            <tr><td colSpan="7" className="px-6 py-4 text-center text-gray-500">No hay buses registrados.</td></tr>
-                        ) : (
-                            buses.map((bus) => (
-                                <tr key={bus.id}>
-                                    <td className="px-6 py-4 whitespace-nowrap">{bus.numero_disco}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap font-semibold">{bus.placa}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap">{bus.marca_chasis} / {bus.marca_carroceria}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap">{bus.pisos}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap">{bus.total_asientos}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${bus.activo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                            {bus.activo ? 'Activo' : 'Inactivo'}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                        <button onClick={() => cambiarEstado(bus.id, bus.activo)} className="text-indigo-600 hover:text-indigo-900">
-                                            {bus.activo ? 'Desactivar' : 'Activar'}
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))
-                        )}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    );
+  return (
+    <div className="container">
+      <h1 className="mb-2">Buses</h1>
+      <p className="text-muted mb-4">Registra los buses de tu cooperativa. Al crear un bus se generan sus asientos.</p>
+
+      <div className="card">
+        <form className="card-body" onSubmit={guardar}>
+          <h2 className="h4 mb-3">{idEdicion ? 'Editar bus' : 'Registrar bus'}</h2>
+          {campo('numero_disco', 'Número de disco', { required: true })}
+          {campo('placa', 'Placa', { required: true, placeholder: 'ABC-1234' })}
+          {campo('marca_chasis', 'Marca del chasis', { required: true, placeholder: 'Mercedes-Benz' })}
+          {campo('marca_carroceria', 'Marca de la carrocería', { required: true, placeholder: 'Olímpica' })}
+          {campo('anio_fabricacion', 'Año de fabricación', { type: 'number', min: 1990, max: 2030 })}
+
+          <div className="mb-3">
+            <label className="form-label" htmlFor="pisos">Pisos</label>
+            <select id="pisos" name="pisos" className="form-control" value={form.pisos} onChange={cambiar}>
+              <option value={1}>1 piso</option>
+              <option value={2}>2 pisos</option>
+            </select>
+          </div>
+
+          {!idEdicion && (
+            <>
+              {campo('cantidad_asientos', 'Cantidad de asientos', { type: 'number', min: 1, max: 80, required: true })}
+              <div className="mb-3">
+                <label className="form-label" htmlFor="tipo_asiento_id">Tipo de asiento por defecto</label>
+                <select id="tipo_asiento_id" name="tipo_asiento_id" className="form-control"
+                  value={form.tipo_asiento_id} onChange={cambiar} required>
+                  <option value="">Elige un tipo</option>
+                  {tipos.map((t) => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+                </select>
+                {errores.tipo_asiento_id && <small style={{ color: '#b3261e' }}>{errores.tipo_asiento_id}</small>}
+              </div>
+            </>
+          )}
+
+          {error && <p style={{ color: '#b3261e' }}>{error}</p>}
+          {aviso && <p style={{ color: '#1e7a4c' }}>{aviso}</p>}
+
+          <button className="btn btn-primary">{idEdicion ? 'Guardar cambios' : 'Registrar bus'}</button>
+          {idEdicion && (
+            <button type="button" className="btn" onClick={limpiar} style={{ marginLeft: 8 }}>Cancelar</button>
+          )}
+        </form>
+      </div>
+
+      <div className="table-responsive">
+        <table className="table">
+          <thead>
+            <tr>
+              <th>Disco</th><th>Placa</th><th>Chasis</th><th>Carrocería</th>
+              <th>Pisos</th><th>Asientos</th><th>Estado</th><th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {buses.map((bus) => (
+              <tr key={bus.id}>
+                <td>{bus.numero_disco}</td>
+                <td>{bus.placa}</td>
+                <td>{bus.marca_chasis}</td>
+                <td>{bus.marca_carroceria}</td>
+                <td>{bus.pisos}</td>
+                <td>{bus.total_asientos}</td>
+                <td>{bus.activo ? 'Activo' : 'Inactivo'}</td>
+                <td>
+                  <button type="button" className="btn" onClick={() => editar(bus)}>Editar</button>
+                  <button type="button" className="btn" onClick={() => alternarEstado(bus)} style={{ marginLeft: 6 }}>
+                    {bus.activo ? 'Desactivar' : 'Activar'}
+                  </button>
+                </td>
+              </tr>
+            ))}
+            {buses.length === 0 && (
+              <tr><td colSpan={8} className="text-center text-muted">No hay buses registrados.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
 }
