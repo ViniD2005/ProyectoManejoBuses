@@ -2,7 +2,7 @@
 import { Routes, Route } from 'react-router-dom'
 import MainLayout from './layouts/MainLayout.jsx'
 import Inicio from './pages/Inicio.jsx'
-import Cooperativas from './pages/Cooperativas.jsx'
+import Cooperativas from './pages/admin/Cooperativas.jsx'
 import Buses from './pages/Buses.jsx'
 import Frecuencias from './pages/cooperativa/Frecuencias.jsx'
 import NoEncontrado from './pages/NoEncontrado.jsx'
