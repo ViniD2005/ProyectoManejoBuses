@@ -1,264 +1,161 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import api from '../services/api';
 
-const Buses = () => {
-  const [buses, setBuses] = useState([]);
-  const [cooperativas, setCooperativas] = useState([]);
-  const [formData, setFormData] = useState({
-    id_cooperativa: '',
-    numero_disco: '',
-    placa: '',
-    chasis: '',
-    carroceria: '',
-    capacidad_asientos: '',
-    foto_url: ''
-  });
-  const [editandoId, setEditandoId] = useState(null);
+export default function Buses() {
+    const [buses, setBuses] = useState([]);
+    const [tiposAsiento, setTiposAsiento] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+    const [mensajeExito, setMensajeExito] = useState('');
 
-  // Cargar datos al iniciar
-  useEffect(() => {
-    cargarBuses();
-    cargarCooperativas();
-  }, []);
+    const [form, setForm] = useState({
+        numero_disco: '',
+        placa: '',
+        marca_chasis: '',
+        marca_carroceria: '',
+        anio_fabricacion: '',
+        pisos: 1,
+        cantidad_asientos: '',
+        tipo_asiento_id: 1
+    });
 
-  const cargarBuses = async () => {
-    try {
-      const response = await fetch('http://localhost:4000/api/buses');
-      const data = await response.json();
-      setBuses(data);
-    } catch (error) {
-      console.error('Error al cargar buses:', error);
-    }
-  };
+    const cargarDatos = async () => {
+        try {
+            setLoading(true);
+            const [resBuses, resTipos] = await Promise.all([
+                api.get('/buses'),
+                api.get('/tipos-asiento').catch(() => ({ data: [] }))
+            ]);
+            setBuses(resBuses.data);
+            setTiposAsiento(resTipos.data);
+        } catch (err) {
+            setError('Error al cargar la información de buses.');
+        } finally {
+            setLoading(false);
+        }
+    };
 
-  const cargarCooperativas = async () => {
-    try {
-      const response = await fetch('http://localhost:4000/api/cooperativas');
-      const data = await response.json();
-      setCooperativas(data);
-    } catch (error) {
-      console.error('Error al cargar cooperativas:', error);
-    }
-  };
+    useEffect(() => {
+        cargarDatos();
+    }, []);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      const url = editandoId 
-        ? `http://localhost:4000/api/buses/${editandoId}` 
-        : 'http://localhost:4000/api/buses';
-      
-      const method = editandoId ? 'PUT' : 'POST';
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setError('');
+        setMensajeExito('');
+        try {
+            await api.post('/buses', form);
+            setMensajeExito(`Bus registrado con éxito con ${form.cantidad_asientos} asientos.`);
+            setForm({
+                numero_disco: '',
+                placa: '',
+                marca_chasis: '',
+                marca_carroceria: '',
+                anio_fabricacion: '',
+                pisos: 1,
+                cantidad_asientos: '',
+                tipo_asiento_id: 1
+            });
+            cargarDatos();
+        } catch (err) {
+            setError(err.response?.data?.error || 'Error al registrar el bus.');
+        }
+    };
 
-      const response = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      });
+    const cambiarEstado = async (id, estadoActual) => {
+        try {
+            await api.patch(`/buses/${id}/estado`, { activo: !estadoActual });
+            cargarDatos();
+        } catch (err) {
+            setError('Error al cambiar el estado del bus.');
+        }
+    };
 
-      if (response.ok) {
-        setFormData({
-          id_cooperativa: '',
-          numero_disco: '',
-          placa: '',
-          chasis: '',
-          carroceria: '',
-          capacidad_asientos: '',
-          foto_url: ''
-        });
-        setEditandoId(null);
-        cargarBuses();
-      }
-    } catch (error) {
-      console.error('Error al guardar el bus:', error);
-    }
-  };
+    return (
+        <div className="max-w-7xl mx-auto p-6">
+            <h1 className="text-3xl font-bold mb-6 text-gray-800">Gestión de Buses</h1>
 
-  const handleEditar = (bus) => {
-    setFormData(bus);
-    setEditandoId(bus.id);
-  };
+            {error && <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">{error}</div>}
+            {mensajeExito && <div className="mb-4 p-3 bg-green-100 text-green-700 rounded">{mensajeExito}</div>}
 
-  const handleCambiarEstado = async (id, estadoActual) => {
-    try {
-      await fetch(`http://localhost:4000/api/buses/${id}/estado`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ activa: !estadoActual })
-      });
-      cargarBuses();
-    } catch (error) {
-      console.error('Error al cambiar estado:', error);
-    }
-  };
+            {/* Formulario de Registro */}
+            <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow-md mb-8 grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">N° Disco</label>
+                    <input type="text" value={form.numero_disco} onChange={e => setForm({...form, numero_disco: e.target.value})} required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm border p-2" />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Placa</label>
+                    <input type="text" value={form.placa} onChange={e => setForm({...form, placa: e.target.value})} required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm border p-2" />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Chasis</label>
+                    <input type="text" value={form.marca_chasis} onChange={e => setForm({...form, marca_chasis: e.target.value})} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm border p-2" />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Carrocería</label>
+                    <input type="text" value={form.marca_carroceria} onChange={e => setForm({...form, marca_carroceria: e.target.value})} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm border p-2" />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Año Fabricación</label>
+                    <input type="number" value={form.anio_fabricacion} onChange={e => setForm({...form, anio_fabricacion: e.target.value})} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm border p-2" />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Pisos</label>
+                    <input type="number" min="1" max="2" value={form.pisos} onChange={e => setForm({...form, pisos: Number(e.target.value)})} required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm border p-2" />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Cantidad Asientos</label>
+                    <input type="number" min="10" max="100" value={form.cantidad_asientos} onChange={e => setForm({...form, cantidad_asientos: e.target.value})} required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm border p-2" />
+                </div>
+                <div className="flex items-end">
+                    <button type="submit" className="w-full bg-blue-600 text-white p-2 rounded-md hover:bg-blue-700 font-medium">Registrar Bus</button>
+                </div>
+            </form>
 
-  return (
-    <div className="container mt-4">
-      <h2 className="mb-4">Gestión de Buses / Unidades</h2>
-
-      {/* Formulario */}
-      <div className="card shadow-sm mb-4">
-        <div className="card-body">
-          <h4 className="card-title mb-3">{editandoId ? 'Editar Bus' : 'Registrar Nuevo Bus'}</h4>
-          <form onSubmit={handleSubmit} className="row g-3">
-            <div className="col-md-4">
-              <label className="form-label">Cooperativa</label>
-              <select 
-                className="form-select"
-                value={formData.id_cooperativa}
-                onChange={(e) => setFormData({...formData, id_cooperativa: e.target.value})}
-                required
-              >
-                <option value="">Seleccione una cooperativa...</option>
-                {cooperativas.map(c => (
-                  <option key={c.id} value={c.id}>{c.nombre}</option>
-                ))}
-              </select>
+            {/* Tabla de Buses */}
+            <div className="bg-white shadow-md rounded-lg overflow-hidden">
+                <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                        <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Disco</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Placa</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Chasis / Carrocería</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pisos</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Asientos</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                        {loading ? (
+                            <tr><td colSpan="7" className="px-6 py-4 text-center">Cargando...</td></tr>
+                        ) : buses.length === 0 ? (
+                            <tr><td colSpan="7" className="px-6 py-4 text-center text-gray-500">No hay buses registrados.</td></tr>
+                        ) : (
+                            buses.map((bus) => (
+                                <tr key={bus.id}>
+                                    <td className="px-6 py-4 whitespace-nowrap">{bus.numero_disco}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap font-semibold">{bus.placa}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap">{bus.marca_chasis} / {bus.marca_carroceria}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap">{bus.pisos}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap">{bus.total_asientos}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${bus.activo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                            {bus.activo ? 'Activo' : 'Inactivo'}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                        <button onClick={() => cambiarEstado(bus.id, bus.activo)} className="text-indigo-600 hover:text-indigo-900">
+                                            {bus.activo ? 'Desactivar' : 'Activar'}
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))
+                        )}
+                    </tbody>
+                </table>
             </div>
-
-            <div className="col-md-4">
-              <label className="form-label">Número de Disco</label>
-              <input 
-                type="text" 
-                className="form-control"
-                value={formData.numero_disco}
-                onChange={(e) => setFormData({...formData, numero_disco: e.target.value})}
-                required
-              />
-            </div>
-
-            <div className="col-md-4">
-              <label className="form-label">Placa</label>
-              <input 
-                type="text" 
-                className="form-control"
-                value={formData.placa}
-                onChange={(e) => setFormData({...formData, placa: e.target.value})}
-                required
-              />
-            </div>
-
-            <div className="col-md-3">
-              <label className="form-label">Chasis</label>
-              <input 
-                type="text" 
-                className="form-control"
-                value={formData.chasis}
-                onChange={(e) => setFormData({...formData, chasis: e.target.value})}
-              />
-            </div>
-
-            <div className="col-md-3">
-              <label className="form-label">Carrocería</label>
-              <input 
-                type="text" 
-                className="form-control"
-                value={formData.carroceria}
-                onChange={(e) => setFormData({...formData, carroceria: e.target.value})}
-              />
-            </div>
-
-            <div className="col-md-3">
-              <label className="form-label">Capacidad de Asientos</label>
-              <input 
-                type="number" 
-                className="form-control"
-                value={formData.capacidad_asientos}
-                onChange={(e) => setFormData({...formData, capacidad_asientos: e.target.value})}
-                required
-              />
-            </div>
-
-            <div className="col-md-3">
-              <label className="form-label">URL de la Fotografía</label>
-              <input 
-                type="text" 
-                className="form-control"
-                value={formData.foto_url}
-                onChange={(e) => setFormData({...formData, foto_url: e.target.value})}
-              />
-            </div>
-
-            <div className="col-12 mt-3">
-              <button type="submit" className="btn btn-primary me-2">
-                {editandoId ? 'Actualizar Bus' : 'Guardar Bus'}
-              </button>
-              {editandoId && (
-                <button 
-                  type="button" 
-                  className="btn btn-secondary"
-                  onClick={() => {
-                    setEditandoId(null);
-                    setFormData({ id_cooperativa: '', numero_disco: '', placa: '', chasis: '', carroceria: '', capacidad_asientos: '', foto_url: '' });
-                  }}
-                >
-                  Cancelar
-                </button>
-              )}
-            </div>
-          </form>
         </div>
-      </div>
-
-      {/* Tabla de Listado */}
-      <div className="card shadow-sm">
-        <div className="card-body">
-          <h4 className="card-title mb-3">Lista de Buses Registrados</h4>
-          <div className="table-responsive">
-            <table className="table table-striped align-middle">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Cooperativa</th>
-                  <th>Disco</th>
-                  <th>Placa</th>
-                  <th>Chasis / Carrocería</th>
-                  <th>Asientos</th>
-                  <th>Estado</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {buses.map(bus => (
-                  <tr key={bus.id}>
-                    <td>{bus.id}</td>
-                    <td>{bus.cooperativa_nombre}</td>
-                    <td>{bus.numero_disco}</td>
-                    <td><strong>{bus.placa}</strong></td>
-                    <td>{bus.chasis} / {bus.carroceria}</td>
-                    <td>{bus.capacidad_asientos}</td>
-                    <td>
-                      <span className={`badge bg-${bus.activa ? 'success' : 'danger'}`}>
-                        {bus.activa ? 'Activo' : 'Inactivo'}
-                      </span>
-                    </td>
-                    <td>
-                      <button 
-                        className="btn btn-sm btn-warning me-2"
-                        onClick={() => handleEditar(bus)}
-                      >
-                        Editar
-                      </button>
-                      <button 
-                        className={`btn btn-sm btn-${bus.activa ? 'outline-danger' : 'outline-success'}`}
-                        onClick={() => handleCambiarEstado(bus.id, bus.activa)}
-                      >
-                        {bus.activa ? 'Desactivar' : 'Activar'}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-                {buses.length === 0 && (
-                  <tr>
-                    <td colSpan="8" className="text-center text-muted">No hay buses registrados aún.</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-export default Buses;
+    );
+}

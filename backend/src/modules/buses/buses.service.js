@@ -1,55 +1,84 @@
 const pool = require('../../config/db');
 
-const listarBuses = async () => {
-  const query = `
-    SELECT b.*, c.nombre AS cooperativa_nombre 
-    FROM buses b
-    JOIN cooperativas c ON b.id_cooperativa = c.id
-    ORDER BY b.id ASC
-  `;
-  const { rows } = await pool.query(query);
-  return rows;
+exports.obtenerBusesPorCooperativa = async (cooperativaId) => {
+    const query = `
+        SELECT b.*, COUNT(a.id) as total_asientos 
+        FROM bus b 
+        LEFT JOIN asiento a ON b.id = a.bus_id 
+        WHERE b.cooperativa_id = $1 
+        GROUP BY b.id 
+        ORDER BY b.id DESC;
+    `;
+    const { rows } = await pool.query(query, [cooperativaId]);
+    return rows;
 };
 
-const crearBus = async (data) => {
-  const { id_cooperativa, numero_disco, placa, chasis, carroceria, capacidad_asientos, foto_url } = data;
-  const query = `
-    INSERT INTO buses (id_cooperativa, numero_disco, placa, chasis, carroceria, capacidad_asientos, foto_url)
-    VALUES ($1, $2, $3, $4, $5, $6, $7)
-    RETURNING *;
-  `;
-  const values = [id_cooperativa, numero_disco, placa, chasis, carroceria, capacidad_asientos, foto_url];
-  const { rows } = await pool.query(query, values);
-  return rows[0];
+exports.crearBus = async (datos) => {
+    const { numero_disco, placa, marca_chasis, marca_carroceria, anio_fabricacion, pisos, cantidad_asientos, tipo_asiento_id, cooperativa_id } = datos;
+    
+    if (!placa || !numero_disco || !cantidad_asientos) {
+        throw new Error('Faltan campos obligatorios: placa, numero_disco o cantidad_asientos');
+    }
+
+    const placaUpper = placa.toUpperCase();
+    const client = await pool.connect();
+
+    try {
+        await client.query('BEGIN');
+
+        // Insertar el bus
+        const queryBus = `
+            INSERT INTO bus (numero_disco, placa, marca_chasis, marca_carroceria, anio_fabricacion, pisos, activo, cooperativa_id)
+            VALUES ($1, $2, $3, $4, $5, $6, true, $7)
+            RETURNING *;
+        `;
+        const valuesBus = [numero_disco, placaUpper, marca_chasis, marca_carroceria, anio_fabricacion, pisos || 1, cooperativa_id];
+        const resBus = await client.query(queryBus, valuesBus);
+        const busCreado = resBus.rows[0];
+
+        // Generar asientos automáticamente
+        const asientosPorPiso = Math.ceil(cantidad_asientos / (pisos || 1));
+        let numeroAsiento = 1;
+
+        for (let piso = 1; piso <= (pisos || 1); piso++) {
+            for (let i = 0; i < asientosPorPiso && numeroAsiento <= cantidad_asientos; i++) {
+                const queryAsiento = `
+                    INSERT INTO asiento (bus_id, numero, piso, tipo_asiento_id, estado)
+                    VALUES ($1, $2, $3, $4, 'disponible');
+                `;
+                await client.query(queryAsiento, [busCreado.id, `A${numeroAsiento}`, piso, tipo_asiento_id || 1]);
+                numeroAsiento++;
+            }
+        }
+
+        await client.query('COMMIT');
+        return { ...busCreado, total_asientos: cantidad_asientos };
+    } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
+    }
 };
 
-const actualizarBus = async (id, data) => {
-  const { id_cooperativa, numero_disco, placa, chasis, carroceria, capacidad_asientos, foto_url } = data;
-  const query = `
-    UPDATE buses 
-    SET id_cooperativa = $1, numero_disco = $2, placa = $3, chasis = $4, carroceria = $5, capacidad_asientos = $6, foto_url = $7
-    WHERE id = $8
-    RETURNING *;
-  `;
-  const values = [id_cooperativa, numero_disco, placa, chasis, carroceria, capacidad_asientos, foto_url, id];
-  const { rows } = await pool.query(query, values);
-  return rows[0];
+exports.actualizarBus = async (id, cooperativaId, datos) => {
+    const { numero_disco, placa, marca_chasis, marca_carroceria, anio_fabricacion, pisos } = datos;
+    const query = `
+        UPDATE bus 
+        SET numero_disco = $1, placa = $2, marca_chasis = $3, marca_carroceria = $4, anio_fabricacion = $5, pisos = $6
+        WHERE id = $7 AND cooperativa_id = $8
+        RETURNING *;
+    `;
+    const { rows } = await pool.query(query, [numero_disco, placa?.toUpperCase(), marca_chasis, marca_carroceria, anio_fabricacion, pisos, id, cooperativaId]);
+    if (rows.length === 0) throw new Error('Bus no encontrado o no autorizado');
+    return rows[0];
 };
 
-const cambiarEstadoBus = async (id, activa) => {
-  const query = `
-    UPDATE buses 
-    SET activa = $1 
-    WHERE id = $2 
-    RETURNING *;
-  `;
-  const { rows } = await pool.query(query, [activa, id]);
-  return rows[0];
-};
-
-module.exports = {
-  listarBuses,
-  crearBus,
-  actualizarBus,
-  cambiarEstadoBus
+exports.cambiarEstado = async (id, cooperativaId, activo) => {
+    const query = `
+        UPDATE bus SET activo = $1 WHERE id = $2 AND cooperativa_id = $3 RETURNING *;
+    `;
+    const { rows } = await pool.query(query, [activo, id, cooperativaId]);
+    if (rows.length === 0) throw new Error('Bus no encontrado o no autorizado');
+    return rows[0];
 };
