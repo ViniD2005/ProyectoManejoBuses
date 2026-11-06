@@ -1,12 +1,13 @@
 
 import { useEffect, useState } from 'react'
 import {
-  Link, useParams, useSearchParams,
+  Link, useParams, useSearchParams, useNavigate
 } from 'react-router-dom'
 import api from '../../services/api.js'
 import './Viajes.css'
 
 function SeleccionAsientos() {
+  const navigate = useNavigate()
   const { id } = useParams()
   const [parametros] = useSearchParams()
 
@@ -77,6 +78,18 @@ function SeleccionAsientos() {
     (suma, asiento) => suma + asiento.precio,
     0
   )
+  const continuarACompra = () => {
+    navigate('/cliente/comprar', {
+      state: {
+        viajeId: id,
+        subida,
+        bajada,
+        pasajeros,
+        asientos: elegidos,
+        total
+      }
+    })
+  }
 
   return (
     <section className="viajes">
@@ -140,6 +153,7 @@ function SeleccionAsientos() {
 
       {!cargando && !error && (
         <div className="viajes__tarjeta">
+          
           <p>
             Seleccionados: {seleccionados.length}
             {' '}de {pasajeros}
@@ -150,18 +164,20 @@ function SeleccionAsientos() {
             {' '}${total.toFixed(2)}
           </p>
 
-          {seleccionados.length === pasajeros
-            ? (
-              <p>
-                Selección completa. Pendiente de integrar
-                con la pantalla de compra del Frente E.
-              </p>
-            )
-            : (
-              <p>
-                Selecciona los asientos restantes.
-              </p>
-            )}
+          {seleccionados.length === pasajeros ? (
+            <button
+              type="button"
+              onClick={continuarACompra}
+              className="viajes__boton-confirmar"
+            >
+              Continuar a la compra
+            </button>
+          ) : (
+            <p>
+              Selecciona los asientos restantes.
+            </p>
+          )}
+          
         </div>
       )}
     </section>
