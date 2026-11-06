@@ -8,7 +8,7 @@ const AuthContext = createContext(null)
 export const INICIO_POR_ROL = {
   admin: '/cooperativas',
   cooperativa: '/cooperativa/tipos-asiento',
-  oficinista: '/',
+  oficinista: '/oficinista/pagos',
   personal_bus: '/',
   cliente: '/',
 }

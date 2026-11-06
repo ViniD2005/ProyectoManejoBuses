@@ -57,6 +57,8 @@ app.use(
 // ========================================
 
 app.use('/api/compras', require('./modules/compras/compras.routes'))
+// Frente E - Validacion de pagos (oficinista)
+app.use('/api/pagos', require('./modules/pagos/pagos.routes'))
 
 // ========================================
 // RUTAS NO ENCONTRADAS
