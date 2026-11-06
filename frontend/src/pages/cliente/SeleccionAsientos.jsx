@@ -153,6 +153,7 @@ function SeleccionAsientos() {
 
       {!cargando && !error && (
         <div className="viajes__tarjeta">
+          
           <p>
             Seleccionados: {seleccionados.length}
             {' '}de {pasajeros}
@@ -163,18 +164,20 @@ function SeleccionAsientos() {
             {' '}${total.toFixed(2)}
           </p>
 
-          {seleccionados.length === pasajeros
-            ? (
-              <p>
-                Selección completa. Pendiente de integrar
-                con la pantalla de compra del Frente E.
-              </p>
-            )
-            : (
-              <p>
-                Selecciona los asientos restantes.
-              </p>
-            )}
+          {seleccionados.length === pasajeros ? (
+            <button
+              type="button"
+              onClick={continuarACompra}
+              className="viajes__boton-confirmar"
+            >
+              Continuar a la compra
+            </button>
+          ) : (
+            <p>
+              Selecciona los asientos restantes.
+            </p>
+          )}
+          
         </div>
       )}
     </section>
