@@ -9,7 +9,7 @@ import Login from './pages/auth/Login.jsx'
 import Registro from './pages/auth/Registro.jsx'
 
 // Frente A - Administracion
-import Cooperativas from './pages/Cooperativas.jsx'
+import Cooperativas from './pages/admin/Cooperativas.jsx'
 
 // Frente B - Flota
 import Buses from './pages/Buses.jsx'
