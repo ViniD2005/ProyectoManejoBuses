@@ -1,3 +1,4 @@
+const fs = require('fs')
 const { pool, transaccion } = require('../../config/db')
 const { validarCedula } = require('../../utils/cedula')
 
@@ -166,6 +167,7 @@ async function crear(clienteId, datos) {
 async function listarMias(clienteId) {
   const { rows } = await pool.query(
     `SELECT c.id, c.total, c.estado_pago, c.creado_en, mp.nombre AS metodo_pago,
+            mp.requiere_comprobante, c.comprobante_url, c.referencia_bancaria, c.motivo_rechazo,
             json_agg(json_build_object(
               'id', b.id, 'codigo', b.codigo, 'estado', b.estado,
               'pasajero_nombre', b.pasajero_nombre, 'numero_asiento', a.numero,
@@ -188,11 +190,57 @@ async function listarMias(clienteId) {
        JOIN ciudad cs ON cs.id = ps.ciudad_id
        JOIN ciudad cb ON cb.id = pb.ciudad_id
       WHERE c.cliente_id = $1
-      GROUP BY c.id, mp.nombre
+      GROUP BY c.id, mp.nombre, mp.requiere_comprobante
       ORDER BY c.creado_en DESC`,
     [clienteId]
   )
   return rows
 }
 
-module.exports = { obtenerCatalogos, crear, listarMias }
+/*
+  El cliente sube el comprobante de su transferencia o depósito.
+  Solo para sus compras en estado 'pendiente'. La compra pasa a 'en_revision'
+  y queda lista para que el oficinista la valide.
+*/
+async function subirComprobante(clienteId, compraId, archivo, referencia) {
+  // Si algo falla, se borra el archivo subido para no dejar basura
+  const descartar = () => archivo && fs.unlink(archivo.path, () => {})
+
+  if (!archivo) throw errorHttp('Adjunta el comprobante (imagen JPG o PNG, o PDF)', 400)
+  if (!referencia?.trim()) {
+    descartar()
+    throw errorHttp('Ingresa el número de referencia de la transferencia o depósito', 400)
+  }
+
+  const { rows } = await pool.query(
+    `SELECT c.id, c.estado_pago, mp.requiere_comprobante
+       FROM compra c JOIN metodo_pago mp ON mp.id = c.metodo_pago_id
+      WHERE c.id = $1 AND c.cliente_id = $2`,
+    [compraId, clienteId]
+  )
+  const compra = rows[0]
+  if (!compra) {
+    descartar()
+    throw errorHttp('Compra no encontrada', 404)
+  }
+  if (!compra.requiere_comprobante) {
+    descartar()
+    throw errorHttp('Este método de pago no requiere comprobante', 400)
+  }
+  if (compra.estado_pago !== 'pendiente') {
+    descartar()
+    throw errorHttp(`No se puede subir comprobante: la compra está "${compra.estado_pago}"`, 409)
+  }
+
+  const url = `/uploads/comprobantes/${archivo.filename}`
+  const actualizada = await pool.query(
+    `UPDATE compra
+        SET comprobante_url = $1, referencia_bancaria = $2, estado_pago = 'en_revision'
+      WHERE id = $3
+      RETURNING id, total, estado_pago, comprobante_url, referencia_bancaria`,
+    [url, referencia.trim(), compraId]
+  )
+  return actualizada.rows[0]
+}
+
+module.exports = { obtenerCatalogos, crear, listarMias, subirComprobante }

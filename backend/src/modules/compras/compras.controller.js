@@ -12,4 +12,8 @@ const listarMias = async (req, res) => {
   res.json(await servicio.listarMias(req.usuario.id))
 }
 
-module.exports = { catalogos, crear, listarMias }
+const subirComprobante = async (req, res) => {
+  res.json(await servicio.subirComprobante(req.usuario.id, req.params.id, req.file, req.body.referencia))
+}
+
+module.exports = { catalogos, crear, listarMias, subirComprobante }
