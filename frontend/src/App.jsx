@@ -23,6 +23,8 @@ import BuscarViajes from './pages/cliente/BuscarViajes.jsx'
 import ResultadosViajes from './pages/cliente/ResultadosViajes.jsx'
 import DetalleViaje from './pages/cliente/DetalleViaje.jsx'
 import SeleccionAsientos from './pages/cliente/SeleccionAsientos.jsx'
+// Frente E - Validacion de pagos
+import ValidarPagos from './pages/oficinista/ValidarPagos.jsx'
 
 function App() {
   return (
@@ -52,6 +54,10 @@ function App() {
         <Route path="/viajes/resultados" element={<ResultadosViajes />} />
         <Route path="/viajes/:id" element={<DetalleViaje />} />
         <Route path="/viajes/:id/asientos" element={<SeleccionAsientos />} />
+        {/* Frente E - Panel del oficinista */}
+        <Route element={<RutaProtegida roles={['oficinista']} />}>
+          <Route path="/oficinista/pagos" element={<ValidarPagos />} />
+        </Route>
       </Route>
 
       <Route path="*" element={<NoEncontrado />} />
