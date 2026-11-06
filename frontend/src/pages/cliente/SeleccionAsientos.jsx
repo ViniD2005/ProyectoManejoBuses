@@ -1,12 +1,13 @@
 
 import { useEffect, useState } from 'react'
 import {
-  Link, useParams, useSearchParams,
+  Link, useParams, useSearchParams, useNavigate
 } from 'react-router-dom'
 import api from '../../services/api.js'
 import './Viajes.css'
 
 function SeleccionAsientos() {
+  const navigate = useNavigate()
   const { id } = useParams()
   const [parametros] = useSearchParams()
 
