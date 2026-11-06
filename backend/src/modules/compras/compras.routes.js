@@ -1,6 +1,7 @@
 const { Router } = require('express')
 const controlador = require('./compras.controller')
 const { autenticar, permitirRoles } = require('../../middlewares/auth')
+const { subirComprobante } = require('../../middlewares/subirArchivo')
 
 const rutas = Router()
 
@@ -10,5 +11,8 @@ rutas.get('/catalogos', controlador.catalogos)
 // Solo clientes con sesión
 rutas.post('/', autenticar, permitirRoles('cliente'), controlador.crear)
 rutas.get('/mias', autenticar, permitirRoles('cliente'), controlador.listarMias)
+
+// Subir comprobante de pago (campo "comprobante" del formulario)
+rutas.post('/:id/comprobante', autenticar, permitirRoles('cliente'), subirComprobante, controlador.subirComprobante)
 
 module.exports = rutas
