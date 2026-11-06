@@ -78,6 +78,18 @@ function SeleccionAsientos() {
     (suma, asiento) => suma + asiento.precio,
     0
   )
+  const continuarACompra = () => {
+    navigate('/cliente/comprar', {
+      state: {
+        viajeId: id,
+        subida,
+        bajada,
+        pasajeros,
+        asientos: elegidos,
+        total
+      }
+    })
+  }
 
   return (
     <section className="viajes">
