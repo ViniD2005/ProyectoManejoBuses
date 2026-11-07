@@ -1,15 +1,15 @@
 
 import { useEffect, useState } from 'react'
 import {
-  Link, useParams, useSearchParams, useNavigate
+  Link, useNavigate, useParams, useSearchParams,
 } from 'react-router-dom'
 import api from '../../services/api.js'
 import './Viajes.css'
 
 function SeleccionAsientos() {
-  const navigate = useNavigate()
   const { id } = useParams()
   const [parametros] = useSearchParams()
+  const navigate = useNavigate()
 
   const subida = parametros.get('subida')
   const bajada = parametros.get('bajada')
@@ -74,22 +74,26 @@ function SeleccionAsientos() {
     (a) => seleccionados.includes(a.id)
   )
 
+  // Guarda la selección (sobrevive al inicio de sesión) y va a la compra
+  function continuarCompra() {
+    sessionStorage.setItem('compraPendiente', JSON.stringify({
+      viaje_id: Number(id),
+      subida: Number(subida),
+      bajada: Number(bajada),
+      asientos: elegidos.map((a) => ({
+        id: a.id,
+        numero: a.numero,
+        tipo_asiento: a.tipo_asiento,
+        precio: a.precio,
+      })),
+    }))
+    navigate('/comprar')
+  }
+
   const total = elegidos.reduce(
     (suma, asiento) => suma + asiento.precio,
     0
   )
-  const continuarACompra = () => {
-    navigate('/cliente/comprar', {
-      state: {
-        viajeId: id,
-        subida,
-        bajada,
-        pasajeros,
-        asientos: elegidos,
-        total
-      }
-    })
-  }
 
   return (
     <section className="viajes">
@@ -153,7 +157,6 @@ function SeleccionAsientos() {
 
       {!cargando && !error && (
         <div className="viajes__tarjeta">
-          
           <p>
             Seleccionados: {seleccionados.length}
             {' '}de {pasajeros}
@@ -164,20 +167,17 @@ function SeleccionAsientos() {
             {' '}${total.toFixed(2)}
           </p>
 
-          {seleccionados.length === pasajeros ? (
-            <button
-              type="button"
-              onClick={continuarACompra}
-              className="viajes__boton-confirmar"
-            >
-              Continuar a la compra
-            </button>
-          ) : (
-            <p>
-              Selecciona los asientos restantes.
-            </p>
-          )}
-          
+          {seleccionados.length === pasajeros
+            ? (
+              <button type="button" onClick={continuarCompra}>
+                Continuar con la compra
+              </button>
+            )
+            : (
+              <p>
+                Selecciona los asientos restantes.
+              </p>
+            )}
         </div>
       )}
     </section>
