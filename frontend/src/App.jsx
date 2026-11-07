@@ -11,6 +11,9 @@ import Registro from './pages/auth/Registro.jsx'
 // Frente A - Administracion
 import Cooperativas from './pages/admin/Cooperativas.jsx'
 
+// Frente E - Panel del oficinista
+import ValidarPagos from './pages/oficinista/ValidarPagos.jsx'
+
 // Frente B - Flota
 import Buses from './pages/Buses.jsx'
 import TiposAsiento from './pages/cooperativa/TiposAsiento.jsx'
@@ -18,13 +21,17 @@ import TiposAsiento from './pages/cooperativa/TiposAsiento.jsx'
 // Frente C - Operacion
 import Frecuencias from './pages/cooperativa/Frecuencias.jsx'
 
+// Frente E - Mis boletos
+import MisBoletos from './pages/cliente/MisBoletos.jsx'
+
 // Frente D - Busqueda de viajes y asientos
 import BuscarViajes from './pages/cliente/BuscarViajes.jsx'
 import ResultadosViajes from './pages/cliente/ResultadosViajes.jsx'
 import DetalleViaje from './pages/cliente/DetalleViaje.jsx'
 import SeleccionAsientos from './pages/cliente/SeleccionAsientos.jsx'
-// Frente E - Validacion de pagos
-import ValidarPagos from './pages/oficinista/ValidarPagos.jsx'
+
+// Frente E - Compra de boletos
+import Comprar from './pages/cliente/Comprar.jsx'
 
 function App() {
   return (
@@ -42,6 +49,11 @@ function App() {
           <Route path="/cooperativas" element={<Cooperativas />} />
         </Route>
 
+        {/* Frente E - Oficinista (solo oficinista) */}
+        <Route element={<RutaProtegida roles={['oficinista']} />}>
+          <Route path="/oficinista/pagos" element={<ValidarPagos />} />
+        </Route>
+
         {/* Frentes B y C - Panel de la cooperativa (solo cooperativa) */}
         <Route element={<RutaProtegida roles={['cooperativa']} />}>
           <Route path="/buses" element={<Buses />} />
@@ -49,14 +61,20 @@ function App() {
           <Route path="/frecuencias" element={<Frecuencias />} />
         </Route>
 
+        {/* Frente E - Mis boletos (solo cliente) */}
+        <Route element={<RutaProtegida roles={['cliente']} />}>
+          <Route path="/mis-boletos" element={<MisBoletos />} />
+        </Route>
+
         {/* Frente D - Busqueda de viajes (publico) */}
         <Route path="/viajes" element={<BuscarViajes />} />
         <Route path="/viajes/resultados" element={<ResultadosViajes />} />
         <Route path="/viajes/:id" element={<DetalleViaje />} />
         <Route path="/viajes/:id/asientos" element={<SeleccionAsientos />} />
-        {/* Frente E - Panel del oficinista */}
-        <Route element={<RutaProtegida roles={['oficinista']} />}>
-          <Route path="/oficinista/pagos" element={<ValidarPagos />} />
+
+        {/* Frente E - Compra (solo cliente) */}
+        <Route element={<RutaProtegida roles={['cliente']} />}>
+          <Route path="/comprar" element={<Comprar />} />
         </Route>
       </Route>
 
