@@ -17,6 +17,7 @@ function MainLayout() {
         <Link to="/" className="layout__marca">Pasajes Ecuador</Link>
         <nav className="layout__nav">
           {usuario?.rol === 'admin' && <Link to="/cooperativas">Cooperativas</Link>}
+          {usuario?.rol === 'cliente' && <Link to="/mis-boletos">Mis boletos</Link>}
           {usuario?.rol === 'cooperativa' && (
             <>
               <Link to="/buses">Buses</Link>
@@ -24,6 +25,7 @@ function MainLayout() {
               <Link to="/frecuencias">Frecuencias</Link>
             </>
           )}
+          {usuario?.rol === 'oficinista' && <Link to="/oficinista/pagos">Validar pagos</Link>}
           {usuario ? (
             <>
               <span>{usuario.nombres} ({usuario.rol})</span>

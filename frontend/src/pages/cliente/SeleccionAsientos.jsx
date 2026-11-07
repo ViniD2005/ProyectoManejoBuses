@@ -1,7 +1,7 @@
 
 import { useEffect, useState } from 'react'
 import {
-  Link, useParams, useSearchParams,
+  Link, useNavigate, useParams, useSearchParams,
 } from 'react-router-dom'
 import api from '../../services/api.js'
 import './Viajes.css'
@@ -9,6 +9,7 @@ import './Viajes.css'
 function SeleccionAsientos() {
   const { id } = useParams()
   const [parametros] = useSearchParams()
+  const navigate = useNavigate()
 
   const subida = parametros.get('subida')
   const bajada = parametros.get('bajada')
@@ -72,6 +73,22 @@ function SeleccionAsientos() {
   const elegidos = asientos.filter(
     (a) => seleccionados.includes(a.id)
   )
+
+  // Guarda la selección (sobrevive al inicio de sesión) y va a la compra
+  function continuarCompra() {
+    sessionStorage.setItem('compraPendiente', JSON.stringify({
+      viaje_id: Number(id),
+      subida: Number(subida),
+      bajada: Number(bajada),
+      asientos: elegidos.map((a) => ({
+        id: a.id,
+        numero: a.numero,
+        tipo_asiento: a.tipo_asiento,
+        precio: a.precio,
+      })),
+    }))
+    navigate('/comprar')
+  }
 
   const total = elegidos.reduce(
     (suma, asiento) => suma + asiento.precio,
@@ -152,10 +169,9 @@ function SeleccionAsientos() {
 
           {seleccionados.length === pasajeros
             ? (
-              <p>
-                Selección completa. Pendiente de integrar
-                con la pantalla de compra del Frente E.
-              </p>
+              <button type="button" onClick={continuarCompra}>
+                Continuar con la compra
+              </button>
             )
             : (
               <p>
