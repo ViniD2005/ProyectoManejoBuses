@@ -2,6 +2,7 @@ import { Link, Outlet } from 'react-router-dom'
 import { useConfiguracion } from '../hooks/useConfiguracion.js'
 import PieDePagina from '../components/PieDePagina.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
+import Notificaciones from '../components/Notificaciones.jsx'
 
 function MainLayout() {
   const { usuario, cerrarSesion } = useAuth()
@@ -39,6 +40,7 @@ function MainLayout() {
           {usuario?.rol === 'oficinista' && <Link to="/oficinista/pagos">Validar pagos</Link>}
           {usuario ? (
             <>
+              <Notificaciones />
               <span>{usuario.nombres} ({usuario.rol})</span>
               <button type="button" onClick={salir}>Cerrar sesión</button>
             </>

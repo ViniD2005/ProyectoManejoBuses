@@ -1,4 +1,5 @@
 const { pool, transaccion } = require('../../config/db')
+const { notificar } = require('../../utils/notificar')
 
 function errorHttp(mensaje, status, detalles) {
   const error = new Error(mensaje)
@@ -68,7 +69,7 @@ async function validar(oficinista, compraId, { aprobado, motivo }) {
 
   return transaccion(async (cliente) => {
     const { rows } = await cliente.query(
-      `SELECT c.id, c.estado_pago
+      `SELECT c.id, c.estado_pago, c.cliente_id
          FROM compra c
         WHERE c.id = $1
           AND EXISTS (
@@ -98,6 +99,15 @@ async function validar(oficinista, compraId, { aprobado, motivo }) {
       'UPDATE boleto SET estado = $1 WHERE compra_id = $2',
       [aprobado ? 'emitido' : 'anulado', compraId]
     )
+    // Notificación al cliente (CC-11)
+    if (aprobado) {
+      await notificar(cliente, compra.cliente_id, `Pago aprobado — compra N.º ${compraId}`,
+        'Tus boletos están emitidos. Descárgalos con su código QR desde Mis boletos.')
+    } else {
+      await notificar(cliente, compra.cliente_id, `Pago rechazado — compra N.º ${compraId}`,
+        `Motivo: ${motivo.trim()}. Los asientos quedaron liberados; puedes realizar una nueva compra.`)
+    }
+
     return actualizada.rows[0]
   })
 }
