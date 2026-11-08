@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import api from '../../services/api.js'
 import { useAuth } from '../../context/AuthContext.jsx'
+import { useConfiguracion } from '../../hooks/useConfiguracion.js'
 import './Viajes.css'
 
-// Datos bancarios que se muestran al finalizar la compra
-const CUENTA_BANCARIA = 'Banco Pichincha - Cuenta corriente 0000000000 - Pasajes Ecuador'
+// Datos bancarios por defecto si la configuración no tiene cuenta registrada
+const CUENTA_POR_DEFECTO = 'Banco Pichincha - Cuenta corriente 0000000000 - Pasajes Ecuador'
 
 function leerSeleccion() {
   try {
@@ -21,6 +22,7 @@ function mensajeDeError(err) {
 
 function Comprar() {
   const { usuario } = useAuth()
+  const { cuenta_bancaria: cuentaBancaria } = useConfiguracion()
   const [seleccion] = useState(leerSeleccion)
   const [viaje, setViaje] = useState(null)
   const [catalogos, setCatalogos] = useState({ metodos_pago: [], tipos_descuento: [] })
@@ -97,7 +99,7 @@ function Comprar() {
         </div>
         <div className="viajes__tarjeta">
           <h2>Siguiente paso: realiza el pago</h2>
-          <p>Haz la transferencia o el depósito a: <strong>{CUENTA_BANCARIA}</strong></p>
+          <p>Haz la transferencia o el depósito a: <strong>{cuentaBancaria || CUENTA_POR_DEFECTO}</strong></p>
           <p>Luego sube el comprobante desde <strong>Mis boletos</strong>. Un oficinista lo validará y tus boletos quedarán emitidos.</p>
           <p>
             <Link to="/mis-boletos">Ir a Mis boletos</Link>
