@@ -10,6 +10,7 @@ import Registro from './pages/auth/Registro.jsx'
 
 // Frente A - Administracion
 import Cooperativas from './pages/admin/Cooperativas.jsx'
+import Configuracion from './pages/admin/Configuracion.jsx'
 
 // Frente E - Panel del oficinista
 import ValidarPagos from './pages/oficinista/ValidarPagos.jsx'
@@ -47,6 +48,7 @@ function App() {
         {/* Frente A - Administracion (solo admin) */}
         <Route element={<RutaProtegida roles={['admin']} />}>
           <Route path="/cooperativas" element={<Cooperativas />} />
+          <Route path="/admin/configuracion" element={<Configuracion />} />
         </Route>
 
         {/* Frente E - Oficinista (solo oficinista) */}
