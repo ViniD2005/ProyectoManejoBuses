@@ -32,6 +32,8 @@ app.use('/api/auth', require('./modules/auth/auth.routes'))
 
 // Tarea 0 - Ciudades
 app.use('/api/ciudades', require('./modules/ciudades/ciudades.routes'))
+// CC-11 - Notificaciones dentro de la aplicacion
+app.use('/api/notificaciones', require('./modules/notificaciones/notificaciones.routes'));
 
 // Frente D - Busqueda de viajes y asientos
 app.use('/api/viajes', require('./modules/viajes/viajes.routes'))
