@@ -35,6 +35,7 @@ function MainLayout() {
               <Link to="/buses">Buses</Link>
               <Link to="/cooperativa/tipos-asiento">Tipos de asiento</Link>
               <Link to="/frecuencias">Frecuencias</Link>
+              <Link to="/cooperativa/hojas-ruta">Hojas de ruta</Link>
             </>
           )}
           {usuario?.rol === 'oficinista' && <Link to="/oficinista/pagos">Validar pagos</Link>}

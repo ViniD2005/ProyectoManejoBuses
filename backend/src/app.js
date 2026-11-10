@@ -61,6 +61,17 @@ app.use(
 )
 
 // ========================================
+// FRENTE C - FERNANDO
+// HOJAS DE RUTA
+// ========================================
+
+// Registrar rutas del modulo de hojas de ruta
+app.use(
+  '/api/hojas-ruta',
+  require('./modules/hojas-ruta/hojas-ruta.routes')
+)
+
+// ========================================
 // MODULO DE COMPRAS
 // ========================================
 

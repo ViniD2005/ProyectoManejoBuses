@@ -21,6 +21,7 @@ import TiposAsiento from './pages/cooperativa/TiposAsiento.jsx'
 
 // Frente C - Operacion
 import Frecuencias from './pages/cooperativa/Frecuencias.jsx'
+import HojasRuta from './pages/cooperativa/HojasRuta.jsx'
 
 // Frente E - Mis boletos
 import MisBoletos from './pages/cliente/MisBoletos.jsx'
@@ -61,6 +62,7 @@ function App() {
           <Route path="/buses" element={<Buses />} />
           <Route path="/cooperativa/tipos-asiento" element={<TiposAsiento />} />
           <Route path="/frecuencias" element={<Frecuencias />} />
+          <Route path="/cooperativa/hojas-ruta" element={<HojasRuta />} />
         </Route>
 
         {/* Frente E - Mis boletos (solo cliente) */}
