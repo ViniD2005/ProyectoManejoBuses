@@ -166,3 +166,11 @@ body { margin: 0; }
 .formulario input { padding: 0.55rem 0.7rem; border: 1px solid #c9d3d9; border-radius: 6px; font: inherit; }
 .formulario button { padding: 0.65rem; border: 0; border-radius: 6px; background: var(--color-primario); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
 .mensaje-error { color: #b3261e; }
+
+/* ── CC-12: logo y pie de página ── */
+.layout { min-height: 100vh; display: flex; flex-direction: column; }
+.layout__contenido { flex: 1; }
+.layout__marca { display: inline-flex; align-items: center; gap: 0.5rem; }
+.layout__logo { height: 32px; width: auto; }
+.pie { display: flex; flex-wrap: wrap; gap: 1.5rem; justify-content: center; padding: 1rem 2rem; background: var(--color-primario); color: #fff; font-size: 0.9rem; }
+.pie a { color: #fff; }

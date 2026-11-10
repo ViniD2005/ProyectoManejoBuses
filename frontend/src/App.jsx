@@ -10,6 +10,7 @@ import Registro from './pages/auth/Registro.jsx'
 
 // Frente A - Administracion
 import Cooperativas from './pages/admin/Cooperativas.jsx'
+import Configuracion from './pages/admin/Configuracion.jsx'
 
 // Frente E - Panel del oficinista
 import ValidarPagos from './pages/oficinista/ValidarPagos.jsx'
@@ -20,6 +21,7 @@ import TiposAsiento from './pages/cooperativa/TiposAsiento.jsx'
 
 // Frente C - Operacion
 import Frecuencias from './pages/cooperativa/Frecuencias.jsx'
+import HojasRuta from './pages/cooperativa/HojasRuta.jsx'
 
 // Frente E - Mis boletos
 import MisBoletos from './pages/cliente/MisBoletos.jsx'
@@ -47,6 +49,7 @@ function App() {
         {/* Frente A - Administracion (solo admin) */}
         <Route element={<RutaProtegida roles={['admin']} />}>
           <Route path="/cooperativas" element={<Cooperativas />} />
+          <Route path="/admin/configuracion" element={<Configuracion />} />
         </Route>
 
         {/* Frente E - Oficinista (solo oficinista) */}
@@ -59,6 +62,7 @@ function App() {
           <Route path="/buses" element={<Buses />} />
           <Route path="/cooperativa/tipos-asiento" element={<TiposAsiento />} />
           <Route path="/frecuencias" element={<Frecuencias />} />
+          <Route path="/cooperativa/hojas-ruta" element={<HojasRuta />} />
         </Route>
 
         {/* Frente E - Mis boletos (solo cliente) */}

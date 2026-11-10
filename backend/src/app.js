@@ -32,6 +32,8 @@ app.use('/api/auth', require('./modules/auth/auth.routes'))
 
 // Tarea 0 - Ciudades
 app.use('/api/ciudades', require('./modules/ciudades/ciudades.routes'))
+// CC-11 - Notificaciones dentro de la aplicacion
+app.use('/api/notificaciones', require('./modules/notificaciones/notificaciones.routes'));
 
 // Frente D - Busqueda de viajes y asientos
 app.use('/api/viajes', require('./modules/viajes/viajes.routes'))
@@ -41,6 +43,8 @@ app.use('/api/cooperativas', require('./modules/cooperativas/cooperativas.routes
 
 // Frente B - Modulo de buses
 app.use('/api/buses', require('./modules/buses/buses.routes'))
+// CC-12 - Configuracion de la aplicacion
+app.use('/api/configuracion', require('./modules/configuracion/configuracion.routes'))
 
 // Frente B - Tipos de asiento
 app.use('/api/tipos-asiento', require('./modules/tipos-asiento/tipos-asiento.routes'))
@@ -57,6 +61,17 @@ app.use(
 )
 
 // ========================================
+// FRENTE C - FERNANDO
+// HOJAS DE RUTA
+// ========================================
+
+// Registrar rutas del modulo de hojas de ruta
+app.use(
+  '/api/hojas-ruta',
+  require('./modules/hojas-ruta/hojas-ruta.routes')
+)
+
+// ========================================
 // MODULO DE COMPRAS
 // ========================================
 
@@ -64,6 +79,8 @@ app.use('/api/compras', require('./modules/compras/compras.routes'))
 
 // Frente E - Validacion de pagos (oficinista)
 app.use('/api/pagos', require('./modules/pagos/pagos.routes'))
+// CC-6 - Boletos en PDF con codigo QR
+app.use('/api/boletos', require('./modules/boletos/boletos.routes'))
 
 // ========================================
 // RUTAS NO ENCONTRADAS

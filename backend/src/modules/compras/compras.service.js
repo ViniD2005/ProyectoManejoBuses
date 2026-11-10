@@ -1,5 +1,6 @@
 const fs = require('fs')
 const { pool, transaccion } = require('../../config/db')
+const { notificar, notificarOficinistas } = require('../../utils/notificar')
 const { validarCedula } = require('../../utils/cedula')
 
 function errorHttp(mensaje, status, detalles) {
@@ -159,6 +160,11 @@ async function crear(clienteId, datos) {
       Object.assign(b, rows[0])
     }
 
+    // Notificación al cliente (CC-11)
+    await notificar(cliente, clienteId, `Compra N.º ${compraId} registrada`,
+      `Reservaste ${boletos.length} asiento(s) por $${total.toFixed(2)}. ` +
+      'Realiza el pago y sube el comprobante desde Mis boletos.')
+
     return { ...compra.rows[0], boletos }
   })
 }
@@ -240,6 +246,21 @@ async function subirComprobante(clienteId, compraId, archivo, referencia) {
       RETURNING id, total, estado_pago, comprobante_url, referencia_bancaria`,
     [url, referencia.trim(), compraId]
   )
+
+  // Notificaciones (CC-11): al cliente y a los oficinistas de la cooperativa del viaje
+  await notificar(pool, clienteId, `Comprobante recibido — compra N.º ${compraId}`,
+    'Tu comprobante está en revisión. Te avisaremos cuando el oficinista valide el pago.')
+  const coop = await pool.query(
+    `SELECT DISTINCT f.cooperativa_id
+       FROM boleto b JOIN viaje v ON v.id = b.viaje_id JOIN frecuencia f ON f.id = v.frecuencia_id
+      WHERE b.compra_id = $1`,
+    [compraId]
+  )
+  for (const fila of coop.rows) {
+    await notificarOficinistas(pool, fila.cooperativa_id, 'Nuevo comprobante por validar',
+      `La compra N.º ${compraId} tiene un comprobante pendiente de revisión (referencia ${referencia.trim()}).`)
+  }
+
   return actualizada.rows[0]
 }
 

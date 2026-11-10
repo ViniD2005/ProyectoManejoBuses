@@ -13,10 +13,6 @@ export default function TiposAsiento() {
   const [nombre, setNombre] = useState('');
   const [factorPrecio, setFactorPrecio] = useState('1.00');
 
-  useEffect(() => {
-    cargarTipos();
-  }, []);
-
   const cargarTipos = async () => {
     try {
       setCargando(true);
@@ -29,6 +25,14 @@ export default function TiposAsiento() {
       setCargando(false);
     }
   };
+
+  // Carga inicial (cargando ya empieza en true; se actualiza al responder la API)
+  useEffect(() => {
+    api.get('/tipos-asiento')
+      .then((respuesta) => setTipos(respuesta.data))
+      .catch((err) => setError(err.response?.data?.mensaje || 'Error al cargar los tipos de asiento'))
+      .finally(() => setCargando(false));
+  }, []);
 
   const limpiarFormulario = () => {
     setNombre('');
