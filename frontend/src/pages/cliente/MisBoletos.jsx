@@ -57,6 +57,28 @@ function FormularioComprobante({ compraId, alSubir }) {
   )
 }
 
+// Descarga el boleto en PDF (con su código QR)
+async function descargarBoleto(codigo, alFallar) {
+  try {
+    const { data } = await api.get(`/boletos/${codigo}/pdf`, { responseType: 'blob' })
+    const url = URL.createObjectURL(data)
+    const enlace = document.createElement('a')
+    enlace.href = url
+    enlace.download = `boleto-${codigo.slice(0, 8)}.pdf`
+    enlace.click()
+    setTimeout(() => URL.revokeObjectURL(url), 60000)
+  } catch (err) {
+    // La respuesta de error también llega como blob: se lee para mostrar el mensaje
+    let mensaje = 'No se pudo descargar el boleto'
+    try {
+      mensaje = JSON.parse(await err.response.data.text()).mensaje || mensaje
+    } catch {
+      // se mantiene el mensaje genérico
+    }
+    alFallar(mensaje)
+  }
+}
+
 function MisBoletos() {
   const [compras, setCompras] = useState([])
   const [cargando, setCargando] = useState(true)
@@ -107,6 +129,14 @@ function MisBoletos() {
             {compra.boletos.map((b) => (
               <li key={b.id}>
                 Asiento {b.numero_asiento} — {b.pasajero_nombre} — ${Number(b.precio_final).toFixed(2)} — boleto {b.estado}
+                {(b.estado === 'emitido' || b.estado === 'usado') && (
+                  <>
+                    {' '}
+                    <button type="button" onClick={() => descargarBoleto(b.codigo, setError)}>
+                      Descargar boleto (PDF con QR)
+                    </button>
+                  </>
+                )}
               </li>
             ))}
           </ul>

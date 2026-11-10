@@ -79,6 +79,8 @@ app.use('/api/compras', require('./modules/compras/compras.routes'))
 
 // Frente E - Validacion de pagos (oficinista)
 app.use('/api/pagos', require('./modules/pagos/pagos.routes'))
+// CC-6 - Boletos en PDF con codigo QR
+app.use('/api/boletos', require('./modules/boletos/boletos.routes'))
 
 // ========================================
 // RUTAS NO ENCONTRADAS
