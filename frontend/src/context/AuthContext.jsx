@@ -9,7 +9,7 @@ export const INICIO_POR_ROL = {
   admin: '/cooperativas',
   cooperativa: '/cooperativa/tipos-asiento',
   oficinista: '/oficinista/pagos',
-  personal_bus: '/',
+  personal_bus: '/personal/abordaje',
   cliente: '/',
 }
 
