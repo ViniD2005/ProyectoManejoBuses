@@ -72,6 +72,22 @@ export default function Buses() {
     setAviso('')
   }
 
+  // CC-17: sube la foto del bus elegida en el selector de archivos
+  const subirFoto = async (bus, archivo) => {
+    if (!archivo) return
+    setError('')
+    setAviso('')
+    try {
+      const datos = new FormData()
+      datos.append('foto', archivo)
+      await api.post(`/buses/${bus.id}/foto`, datos)
+      setAviso(`Foto del bus ${bus.numero_disco} actualizada`)
+      cargarBuses()
+    } catch (err) {
+      setError(mensajeDeError(err))
+    }
+  }
+
   const alternarEstado = async (bus) => {
     try {
       await api.patch(`/buses/${bus.id}/estado`, { activo: !bus.activo })
@@ -140,13 +156,24 @@ export default function Buses() {
         <table className="table">
           <thead>
             <tr>
-              <th>Disco</th><th>Placa</th><th>Chasis</th><th>Carrocería</th>
+              <th>Foto</th><th>Disco</th><th>Placa</th><th>Chasis</th><th>Carrocería</th>
               <th>Pisos</th><th>Asientos</th><th>Estado</th><th>Acciones</th>
             </tr>
           </thead>
           <tbody>
             {buses.map((bus) => (
               <tr key={bus.id}>
+                <td>
+                  {bus.foto_url
+                    ? <img src={bus.foto_url} alt={`Bus ${bus.numero_disco}`} style={{ width: 72, height: 48, objectFit: 'cover', borderRadius: 4 }} />
+                    : <small className="text-muted">Sin foto</small>}
+                  <br />
+                  <label style={{ cursor: 'pointer', fontSize: 12, textDecoration: 'underline' }}>
+                    {bus.foto_url ? 'Cambiar' : 'Subir foto'}
+                    <input type="file" accept="image/jpeg,image/png,image/webp" style={{ display: 'none' }}
+                      onChange={(e) => subirFoto(bus, e.target.files[0])} />
+                  </label>
+                </td>
                 <td>{bus.numero_disco}</td>
                 <td>{bus.placa}</td>
                 <td>{bus.marca_chasis}</td>
@@ -163,7 +190,7 @@ export default function Buses() {
               </tr>
             ))}
             {buses.length === 0 && (
-              <tr><td colSpan={8} className="text-center text-muted">No hay buses registrados.</td></tr>
+              <tr><td colSpan={9} className="text-center text-muted">No hay buses registrados.</td></tr>
             )}
           </tbody>
         </table>
