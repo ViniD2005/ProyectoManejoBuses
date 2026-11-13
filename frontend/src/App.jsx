@@ -14,6 +14,7 @@ import Configuracion from './pages/admin/Configuracion.jsx'
 
 // Frente E - Panel del oficinista
 import ValidarPagos from './pages/oficinista/ValidarPagos.jsx'
+import VenderBoletos from './pages/oficinista/VenderBoletos.jsx'
 
 // Frente B - Flota
 import Buses from './pages/Buses.jsx'
@@ -57,6 +58,7 @@ function App() {
         {/* Frente E - Oficinista (solo oficinista) */}
         <Route element={<RutaProtegida roles={['oficinista']} />}>
           <Route path="/oficinista/pagos" element={<ValidarPagos />} />
+          <Route path="/oficinista/vender" element={<VenderBoletos />} />
         </Route>
 
         {/* Frentes B y C - Panel de la cooperativa (solo cooperativa) */}

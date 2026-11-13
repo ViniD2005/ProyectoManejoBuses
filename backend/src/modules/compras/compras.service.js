@@ -37,8 +37,13 @@ async function obtenerCatalogos() {
     pasajeros: [ { asiento_id, cedula, nombre, tipo_descuento_id (opcional) }, ... ]
   }
   El servidor calcula precios y descuentos: nunca se confía en valores del frontend.
+
+  opciones.vendidoPor (CC-14, venta en ventanilla): el oficinista que vende.
+  En ese caso el pago es en efectivo, la compra queda aprobada y los boletos emitidos,
+  y el viaje debe ser de la cooperativa del oficinista.
 */
-async function crear(clienteId, datos) {
+async function crear(clienteId, datos, opciones = {}) {
+  const ventanilla = opciones.vendidoPor || null
   const pasajeros = Array.isArray(datos.pasajeros) ? datos.pasajeros : []
   if (!datos.viaje_id || !datos.subida || !datos.bajada || !datos.metodo_pago_id) {
     throw errorHttp('Faltan datos del viaje, del tramo o del método de pago', 400)
@@ -75,6 +80,9 @@ async function crear(clienteId, datos) {
     if (viaje.estado !== 'programado') throw errorHttp('Este viaje ya no está disponible para la venta', 409)
     const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Guayaquil' })
     if (viaje.fecha < hoy) throw errorHttp('No se pueden comprar boletos de viajes pasados', 409)
+    if (ventanilla && viaje.cooperativa_id !== ventanilla.cooperativa_id) {
+      throw errorHttp('Solo puedes vender boletos de los viajes de tu cooperativa', 403)
+    }
 
     const metodo = await cliente.query('SELECT id FROM metodo_pago WHERE id = $1 AND activo', [datos.metodo_pago_id])
     if (!metodo.rows[0]) throw errorHttp('Método de pago no válido', 400)
@@ -139,10 +147,10 @@ async function crear(clienteId, datos) {
 
     const total = redondear(boletos.reduce((suma, b) => suma + b.precio_final, 0))
     const compra = await cliente.query(
-      `INSERT INTO compra (cliente_id, metodo_pago_id, total, estado_pago)
-       VALUES ($1, $2, $3, 'pendiente')
+      `INSERT INTO compra (cliente_id, metodo_pago_id, total, estado_pago, vendido_por, validado_por, validado_en)
+       VALUES ($1, $2, $3, $4, $5, $5, CASE WHEN $5::int IS NULL THEN NULL ELSE NOW() END)
        RETURNING id, total, estado_pago, creado_en`,
-      [clienteId, datos.metodo_pago_id, total]
+      [clienteId, datos.metodo_pago_id, total, ventanilla ? 'aprobado' : 'pendiente', ventanilla ? ventanilla.id : null]
     )
     const compraId = compra.rows[0].id
 
@@ -151,19 +159,25 @@ async function crear(clienteId, datos) {
     for (const b of boletos) {
       const { rows } = await cliente.query(
         `INSERT INTO boleto (compra_id, viaje_id, asiento_id, pasajero_cedula, pasajero_nombre,
-                             tipo_descuento_id, orden_subida, orden_bajada, precio_base, descuento, precio_final)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                             tipo_descuento_id, orden_subida, orden_bajada, precio_base, descuento, precio_final, estado)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
          RETURNING id, codigo, estado`,
         [compraId, viaje.id, b.asiento_id, b.pasajero_cedula, b.pasajero_nombre, b.tipo_descuento_id,
-          viaje.orden_subida, viaje.orden_bajada, b.precio_base, b.descuento, b.precio_final]
+          viaje.orden_subida, viaje.orden_bajada, b.precio_base, b.descuento, b.precio_final,
+          ventanilla ? 'emitido' : 'reservado']
       )
       Object.assign(b, rows[0])
     }
 
     // Notificación al cliente (CC-11)
-    await notificar(cliente, clienteId, `Compra N.º ${compraId} registrada`,
-      `Reservaste ${boletos.length} asiento(s) por $${total.toFixed(2)}. ` +
-      'Realiza el pago y sube el comprobante desde Mis boletos.')
+    if (!ventanilla) {
+      await notificar(cliente, clienteId, `Compra N.º ${compraId} registrada`,
+        `Reservaste ${boletos.length} asiento(s) por $${total.toFixed(2)}. ` +
+        'Realiza el pago y sube el comprobante desde Mis boletos.')
+    } else if (clienteId !== ventanilla.id) {
+      await notificar(cliente, clienteId, `Compra N.º ${compraId} en ventanilla`,
+        `Se emitieron ${boletos.length} boleto(s) pagados en efectivo. Descárgalos desde Mis boletos.`)
+    }
 
     return { ...compra.rows[0], boletos }
   })
@@ -264,4 +278,24 @@ async function subirComprobante(clienteId, compraId, archivo, referencia) {
   return actualizada.rows[0]
 }
 
-module.exports = { obtenerCatalogos, crear, listarMias, subirComprobante }
+/*
+  CC-14: venta en ventanilla. El oficinista vende con pago en efectivo.
+  Si la cédula del primer pasajero es de un cliente registrado, la compra queda en su
+  historial (Mis boletos); si no, queda registrada a nombre del oficinista que vendió.
+*/
+async function venderEnVentanilla(oficinista, datos) {
+  const efectivo = await pool.query("SELECT id FROM metodo_pago WHERE codigo = 'efectivo' AND activo")
+  if (!efectivo.rows[0]) throw errorHttp('El pago en efectivo no está habilitado', 409)
+
+  const cedula = Array.isArray(datos.pasajeros) ? datos.pasajeros[0]?.cedula : null
+  const registrado = await pool.query(
+    `SELECT u.id FROM usuario u JOIN rol r ON r.id = u.rol_id
+      WHERE u.cedula = $1 AND r.nombre = 'cliente' AND u.activo`,
+    [cedula || '']
+  )
+  const clienteId = registrado.rows[0]?.id || oficinista.id
+
+  return crear(clienteId, { ...datos, metodo_pago_id: efectivo.rows[0].id }, { vendidoPor: oficinista })
+}
+
+module.exports = { obtenerCatalogos, crear, listarMias, subirComprobante, venderEnVentanilla }
