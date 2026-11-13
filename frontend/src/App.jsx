@@ -34,6 +34,8 @@ import SeleccionAsientos from './pages/cliente/SeleccionAsientos.jsx'
 
 // Frente E - Compra de boletos
 import Comprar from './pages/cliente/Comprar.jsx'
+// CC-15 - Personal del bus
+import Abordaje from './pages/personal/Abordaje.jsx'
 
 function App() {
   return (
@@ -65,6 +67,10 @@ function App() {
           <Route path="/cooperativa/hojas-ruta" element={<HojasRuta />} />
         </Route>
 
+        {/* CC-15 - Personal del bus (solo personal_bus) */}
+        <Route element={<RutaProtegida roles={['personal_bus']} />}>
+          <Route path="/personal/abordaje" element={<Abordaje />} />
+        </Route>
         {/* Frente E - Mis boletos (solo cliente) */}
         <Route element={<RutaProtegida roles={['cliente']} />}>
           <Route path="/mis-boletos" element={<MisBoletos />} />

@@ -81,6 +81,8 @@ app.use('/api/compras', require('./modules/compras/compras.routes'))
 app.use('/api/pagos', require('./modules/pagos/pagos.routes'))
 // CC-6 - Boletos en PDF con codigo QR
 app.use('/api/boletos', require('./modules/boletos/boletos.routes'))
+// CC-15 - Abordaje del personal del bus
+app.use('/api/accesos', require('./modules/accesos/accesos.routes'))
 
 // ========================================
 // RUTAS NO ENCONTRADAS

@@ -29,6 +29,7 @@ function MainLayout() {
               <Link to="/admin/configuracion">Configuración</Link>
             </>
           )}
+          {usuario?.rol === 'personal_bus' && <Link to="/personal/abordaje">Abordaje</Link>}
           {usuario?.rol === 'cliente' && <Link to="/mis-boletos">Mis boletos</Link>}
           {usuario?.rol === 'cooperativa' && (
             <>
