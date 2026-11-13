@@ -45,6 +45,8 @@ app.use('/api/cooperativas', require('./modules/cooperativas/cooperativas.routes
 app.use('/api/buses', require('./modules/buses/buses.routes'))
 // CC-12 - Configuracion de la aplicacion
 app.use('/api/configuracion', require('./modules/configuracion/configuracion.routes'))
+// CC-16 - Gestion de usuarios
+app.use('/api/usuarios', require('./modules/usuarios/usuarios.routes'))
 
 // Frente B - Tipos de asiento
 app.use('/api/tipos-asiento', require('./modules/tipos-asiento/tipos-asiento.routes'))
