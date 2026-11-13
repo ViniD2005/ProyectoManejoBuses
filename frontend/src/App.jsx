@@ -1,3 +1,4 @@
+
 import { Routes, Route } from 'react-router-dom'
 import MainLayout from './layouts/MainLayout.jsx'
 import RutaProtegida from './components/RutaProtegida.jsx'
@@ -22,6 +23,10 @@ import TiposAsiento from './pages/cooperativa/TiposAsiento.jsx'
 // Frente C - Operacion
 import Frecuencias from './pages/cooperativa/Frecuencias.jsx'
 import HojasRuta from './pages/cooperativa/HojasRuta.jsx'
+
+// CC-13 - Turnos y hoja de ruta semanal
+import Turnos from './pages/cooperativa/Turnos.jsx'
+import HojaSemanal from './pages/cooperativa/HojaSemanal.jsx'
 
 // Frente E - Mis boletos
 import MisBoletos from './pages/cliente/MisBoletos.jsx'
@@ -63,6 +68,8 @@ function App() {
           <Route path="/cooperativa/tipos-asiento" element={<TiposAsiento />} />
           <Route path="/frecuencias" element={<Frecuencias />} />
           <Route path="/cooperativa/hojas-ruta" element={<HojasRuta />} />
+          <Route path="/cooperativa/turnos" element={<Turnos />} />
+          <Route path="/cooperativa/hoja-semanal" element={<HojaSemanal />} />
         </Route>
 
         {/* Frente E - Mis boletos (solo cliente) */}
