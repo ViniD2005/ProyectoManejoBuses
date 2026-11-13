@@ -16,4 +16,9 @@ const subirComprobante = async (req, res) => {
   res.json(await servicio.subirComprobante(req.usuario.id, req.params.id, req.file, req.body.referencia))
 }
 
-module.exports = { catalogos, crear, listarMias, subirComprobante }
+// CC-14: venta en ventanilla (oficinista)
+const venderEnVentanilla = async (req, res) => {
+  res.status(201).json(await servicio.venderEnVentanilla(req.usuario, req.body))
+}
+
+module.exports = { catalogos, crear, listarMias, subirComprobante, venderEnVentanilla }

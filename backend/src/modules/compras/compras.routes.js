@@ -15,4 +15,7 @@ rutas.get('/mias', autenticar, permitirRoles('cliente'), controlador.listarMias)
 // Subir comprobante de pago (campo "comprobante" del formulario)
 rutas.post('/:id/comprobante', autenticar, permitirRoles('cliente'), subirComprobante, controlador.subirComprobante)
 
+// CC-14: venta en ventanilla, pago en efectivo (solo oficinista)
+rutas.post('/ventanilla', autenticar, permitirRoles('oficinista'), controlador.venderEnVentanilla)
+
 module.exports = rutas
