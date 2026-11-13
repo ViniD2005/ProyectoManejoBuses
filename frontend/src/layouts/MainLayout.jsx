@@ -38,7 +38,12 @@ function MainLayout() {
               <Link to="/cooperativa/hojas-ruta">Hojas de ruta</Link>
             </>
           )}
-          {usuario?.rol === 'oficinista' && <Link to="/oficinista/pagos">Validar pagos</Link>}
+          {usuario?.rol === 'oficinista' && (
+            <>
+              <Link to="/oficinista/vender">Vender boletos</Link>
+              <Link to="/oficinista/pagos">Validar pagos</Link>
+            </>
+          )}
           {usuario ? (
             <>
               <Notificaciones />
