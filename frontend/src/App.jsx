@@ -1,4 +1,3 @@
-
 import { Routes, Route } from 'react-router-dom'
 import MainLayout from './layouts/MainLayout.jsx'
 import RutaProtegida from './components/RutaProtegida.jsx'
