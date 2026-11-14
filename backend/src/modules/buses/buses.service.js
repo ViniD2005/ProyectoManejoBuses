@@ -1,3 +1,4 @@
+const fs = require('fs')
 const { pool, transaccion } = require('../../config/db')
 
 function errorHttp(mensaje, status, detalles) {
@@ -117,4 +118,19 @@ async function cambiarEstado(cooperativaId, id, activo) {
   return rows[0]
 }
 
-module.exports = { listar, crear, actualizar, cambiarEstado }
+// CC-17: guarda la foto del bus (solo buses de la cooperativa del usuario)
+async function actualizarFoto(cooperativaId, id, archivo) {
+  if (!archivo) throw errorHttp('Adjunta una imagen JPG, PNG o WEBP', 400)
+  const url = `/uploads/buses/${archivo.filename}`
+  const { rows } = await pool.query(
+    `UPDATE bus SET foto_url = $1 WHERE id = $2 AND cooperativa_id = $3 RETURNING ${CAMPOS}`,
+    [url, id, cooperativaId]
+  )
+  if (!rows[0]) {
+    fs.unlink(archivo.path, () => {})
+    throw errorHttp('Bus no encontrado', 404)
+  }
+  return rows[0]
+}
+
+module.exports = { listar, crear, actualizar, cambiarEstado, actualizarFoto }

@@ -16,4 +16,9 @@ const cambiarEstado = async (req, res) => {
   res.json(await servicio.cambiarEstado(req.usuario.cooperativa_id, req.params.id, req.body.activo))
 }
 
-module.exports = { listar, crear, actualizar, cambiarEstado }
+// CC-17: subir la foto del bus
+const actualizarFoto = async (req, res) => {
+  res.json(await servicio.actualizarFoto(req.usuario.cooperativa_id, req.params.id, req.file))
+}
+
+module.exports = { listar, crear, actualizar, cambiarEstado, actualizarFoto }
