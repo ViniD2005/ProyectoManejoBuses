@@ -27,6 +27,7 @@ function MainLayout() {
             <>
               <Link to="/cooperativas">Cooperativas</Link>
               <Link to="/admin/configuracion">Configuración</Link>
+              <Link to="/admin/usuarios">Usuarios</Link>
             </>
           )}
           {usuario?.rol === 'personal_bus' && <Link to="/personal/abordaje">Abordaje</Link>}
@@ -34,6 +35,7 @@ function MainLayout() {
           {usuario?.rol === 'cooperativa' && (
             <>
               <Link to="/buses">Buses</Link>
+              <Link to="/cooperativa/personal">Personal</Link>
               <Link to="/cooperativa/tipos-asiento">Tipos de asiento</Link>
               <Link to="/frecuencias">Frecuencias</Link>
               <Link to="/cooperativa/hojas-ruta">Hojas de ruta</Link>
