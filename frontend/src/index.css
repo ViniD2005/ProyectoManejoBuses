@@ -1,3 +1,4 @@
+
 :root {
   --color-primario: #1f4e5f;
   --color-acento: #e8a317;
@@ -13,7 +14,7 @@ body { margin: 0; }
 
 .layout__header {
   padding: 1rem 2rem;
-  background: var(--color-primario);
+  background: var(--coop-primario, var(--color-primario));
 }
 .layout__marca {
   color: #fff;
@@ -92,8 +93,13 @@ body { margin: 0; }
 
 .form-control:focus {
   outline: none;
-  border-color: var(--color-primario);
+  border-color: var(--coop-primario, var(--color-primario));
   box-shadow: 0 0 0 3px rgba(31, 78, 95, 0.15);
+  box-shadow: 0 0 0 3px color-mix(
+    in srgb,
+    var(--coop-primario, var(--color-primario)) 15%,
+    transparent
+  );
 }
 
 .table-responsive {
@@ -131,13 +137,18 @@ body { margin: 0; }
 }
 
 .btn-primary {
-  background: var(--color-primario);
+  background: var(--coop-primario, var(--color-primario));
   color: white;
 }
 
 .btn-primary:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--coop-acento, var(--color-acento));
+  outline-offset: 3px;
 }
 
 .shadow-sm {
@@ -164,13 +175,26 @@ body { margin: 0; }
 .formulario { max-width: 420px; margin: 0 auto; display: flex; flex-direction: column; gap: 0.9rem; }
 .formulario label { display: flex; flex-direction: column; gap: 0.3rem; font-weight: 500; }
 .formulario input { padding: 0.55rem 0.7rem; border: 1px solid #c9d3d9; border-radius: 6px; font: inherit; }
-.formulario button { padding: 0.65rem; border: 0; border-radius: 6px; background: var(--color-primario); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+.formulario button { padding: 0.65rem; border: 0; border-radius: 6px; background: var(--coop-primario, var(--color-primario)); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
 .mensaje-error { color: #b3261e; }
 
 /* ── CC-12: logo y pie de página ── */
 .layout { min-height: 100vh; display: flex; flex-direction: column; }
 .layout__contenido { flex: 1; }
-.layout__marca { display: inline-flex; align-items: center; gap: 0.5rem; }
-.layout__logo { height: 32px; width: auto; }
-.pie { display: flex; flex-wrap: wrap; gap: 1.5rem; justify-content: center; padding: 1rem 2rem; background: var(--color-primario); color: #fff; font-size: 0.9rem; }
+
+.layout__marca {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.layout__logo {
+  height: 42px;
+  max-width: 90px;
+  width: auto;
+  object-fit: contain;
+  border-radius: 6px;
+}
+
+.pie { display: flex; flex-wrap: wrap; gap: 1.5rem; justify-content: center; padding: 1rem 2rem; background: var(--coop-primario, var(--color-primario)); color: #fff; font-size: 0.9rem; }
 .pie a { color: #fff; }
