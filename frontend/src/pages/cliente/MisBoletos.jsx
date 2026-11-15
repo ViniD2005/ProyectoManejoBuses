@@ -1,6 +1,8 @@
-			import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import api from '../../services/api.js'
+import IconoBus from './IconoBus.jsx'
+import { dinero, fechaLarga, horaEnParada } from './formatos.js'
 import './Viajes.css'
 
 const NOMBRE_ESTADO = {
@@ -10,25 +12,45 @@ const NOMBRE_ESTADO = {
   rechazado: 'Pago rechazado',
 }
 
+const NOMBRE_BOLETO = {
+  reservado: 'Reservado',
+  emitido: 'Listo para viajar',
+  usado: 'Usado',
+  anulado: 'Anulado',
+}
+
 function mensajeDeError(err) {
-  return err.response?.data?.mensaje || 'No se pudo conectar con el servidor'
+  return err.response?.data?.mensaje || 'No pudimos conectarnos con el servidor. Inténtalo de nuevo.'
 }
 
 // Formulario para subir el comprobante de una compra pendiente
-function FormularioComprobante({ compraId, alSubir }) {
+function FormularioComprobante({ compraId, total, alSubir }) {
   const [archivo, setArchivo] = useState(null)
   const [referencia, setReferencia] = useState('')
   const [error, setError] = useState('')
   const [enviando, setEnviando] = useState(false)
 
+  const elegirArchivo = (e) => {
+    const elegido = e.target.files[0] || null
+    setError('')
+    if (elegido && elegido.size > 5 * 1024 * 1024) {
+      setError('El archivo pesa más de 5 MB. Elige una imagen más liviana o un PDF.')
+      setArchivo(null)
+      return
+    }
+    setArchivo(elegido)
+  }
+
   const enviar = async (e) => {
     e.preventDefault()
+    if (!archivo) return setError('Adjunta la foto o el PDF del comprobante')
+    if (!referencia.trim()) return setError('Escribe el número de referencia que aparece en el comprobante')
     setError('')
     setEnviando(true)
     try {
       const datos = new FormData()
       datos.append('comprobante', archivo)
-      datos.append('referencia', referencia)
+      datos.append('referencia', referencia.trim())
       await api.post(`/compras/${compraId}/comprobante`, datos)
       alSubir()
     } catch (err) {
@@ -39,19 +61,21 @@ function FormularioComprobante({ compraId, alSubir }) {
   }
 
   return (
-    <form onSubmit={enviar} className="viajes__formulario">
-      <label>
-        Comprobante (JPG, PNG o PDF, máximo 5 MB)
-        <input type="file" accept="image/jpeg,image/png,application/pdf" required
-          onChange={(e) => setArchivo(e.target.files[0] || null)} />
-      </label>
-      <label>
-        Número de referencia
-        <input value={referencia} required onChange={(e) => setReferencia(e.target.value)} />
-      </label>
+    <form onSubmit={enviar} className="comprobante" noValidate>
+      <h3>Sube tu comprobante de pago por {dinero(total)}</h3>
+      <div className="rejilla-campos">
+        <label className="subir-archivo">
+          <input type="file" accept="image/jpeg,image/png,application/pdf" onChange={elegirArchivo} />
+          <span>{archivo ? archivo.name : 'Elegir archivo (JPG, PNG o PDF, máx. 5 MB)'}</span>
+        </label>
+        <label className="viajes__campo">
+          <span>Número de referencia</span>
+          <input value={referencia} placeholder="Ej. 004512378" onChange={(e) => setReferencia(e.target.value)} />
+        </label>
+      </div>
+      {error && <p role="alert" className="viajes__error" style={{ margin: 0 }}>{error}</p>}
       <div>
-        <button disabled={enviando}>{enviando ? 'Subiendo…' : 'Subir comprobante'}</button>
-        {error && <p role="alert" className="viajes__error">{error}</p>}
+        <button className="viajes__boton" disabled={enviando}>{enviando ? 'Subiendo…' : 'Enviar comprobante'}</button>
       </div>
     </form>
   )
@@ -69,7 +93,7 @@ async function descargarBoleto(codigo, alFallar) {
     setTimeout(() => URL.revokeObjectURL(url), 60000)
   } catch (err) {
     // La respuesta de error también llega como blob: se lee para mostrar el mensaje
-    let mensaje = 'No se pudo descargar el boleto'
+    let mensaje = 'No pudimos descargar el boleto. Inténtalo de nuevo.'
     try {
       mensaje = JSON.parse(await err.response.data.text()).mensaje || mensaje
     } catch {
@@ -79,11 +103,13 @@ async function descargarBoleto(codigo, alFallar) {
   }
 }
 
+// Historial de compras y boletos del cliente (rediseño CC-20)
 function MisBoletos() {
   const [compras, setCompras] = useState([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState('')
   const [aviso, setAviso] = useState('')
+  const [filtro, setFiltro] = useState('todas')
 
   const cargar = () =>
     api.get('/compras/mias')
@@ -100,53 +126,87 @@ function MisBoletos() {
     cargar()
   }
 
-  return (
-    <section className="viajes">
-      <h1>Mis boletos</h1>
-      {cargando && <p>Cargando tus compras…</p>}
-      {error && <p role="alert" className="viajes__error">{error}</p>}
-      {aviso && <p role="status">{aviso}</p>}
+  const porPagar = compras.filter((c) => c.estado_pago === 'pendiente' || c.estado_pago === 'rechazado').length
+  const visibles = compras.filter((c) => filtro === 'todas' || (filtro === 'pagar' ? ['pendiente', 'rechazado'].includes(c.estado_pago) : c.estado_pago === 'aprobado'))
 
-      {!cargando && !error && compras.length === 0 && (
-        <p>Todavía no tienes compras. <Link to="/viajes">Busca un viaje</Link></p>
+  return (
+    <section className="viajes" style={{ maxWidth: 900 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-end', gap: '1rem', marginBottom: '1.25rem' }}>
+        <div>
+          <h1>Mis boletos</h1>
+          <p className="viajes__sub" style={{ margin: 0 }}>Tus compras, el estado de cada pago y tus boletos con código QR.</p>
+        </div>
+        <Link to="/viajes" className="viajes__boton">Comprar un pasaje</Link>
+      </div>
+
+      {error && <p role="alert" className="viajes__error">{error}</p>}
+      {aviso && <p role="status" className="viajes__aviso">{aviso}</p>}
+
+      {compras.length > 0 && (
+        <div className="pisos" role="tablist">
+          {[['todas', `Todas (${compras.length})`], ['pagar', `Por pagar (${porPagar})`], ['listas', 'Pagadas']].map(([valor, texto]) => (
+            <button key={valor} type="button" role="tab" aria-selected={filtro === valor} onClick={() => setFiltro(valor)}>{texto}</button>
+          ))}
+        </div>
       )}
 
-      {compras.map((compra) => (
-        <article className="viajes__tarjeta" key={compra.id}>
-          <h2>{compra.origen} → {compra.destino}</h2>
-          <p>
-            {compra.fecha_viaje}, salida {compra.hora_salida?.slice(0, 5)} — {compra.cooperativa}
-          </p>
-          <p>
-            Compra N.º {compra.id} — Total ${Number(compra.total).toFixed(2)} — {compra.metodo_pago}
-          </p>
-          <p><strong>{NOMBRE_ESTADO[compra.estado_pago] || compra.estado_pago}</strong></p>
-          {compra.estado_pago === 'rechazado' && compra.motivo_rechazo && (
-            <p className="viajes__error">Motivo: {compra.motivo_rechazo}</p>
-          )}
+      {cargando && [1, 2].map((n) => <div key={n} className="viajes__esqueleto" />)}
 
-          <ul>
-            {compra.boletos.map((b) => (
-              <li key={b.id}>
-                Asiento {b.numero_asiento} — {b.pasajero_nombre} — ${Number(b.precio_final).toFixed(2)} — boleto {b.estado}
-                {(b.estado === 'emitido' || b.estado === 'usado') && (
-                  <>
-                    {' '}
-                    <button type="button" onClick={() => descargarBoleto(b.codigo, setError)}>
-                      Descargar boleto (PDF con QR)
+      {!cargando && !error && compras.length === 0 && (
+        <div className="viajes__vacio">
+          <span className="viajes__vacio-icono"><IconoBus /></span>
+          <strong>Todavía no tienes compras</strong>
+          <span>Cuando compres un pasaje, aquí verás tus boletos.</span>
+          <Link to="/viajes" className="viajes__boton" style={{ marginTop: '.5rem' }}>Buscar un viaje</Link>
+        </div>
+      )}
+
+      {visibles.map((compra) => (
+        <article className="viajes__tarjeta compra" key={compra.id}>
+          <header className="compra__cabecera">
+            <div>
+              <h2>{compra.origen} → {compra.destino}</h2>
+              <p style={{ textTransform: 'capitalize' }}>
+                {fechaLarga(compra.fecha_viaje)} · {horaEnParada(compra.hora_salida)} · {compra.cooperativa}
+              </p>
+            </div>
+            <span className={`estado estado--${compra.estado_pago}`}>{NOMBRE_ESTADO[compra.estado_pago] || compra.estado_pago}</span>
+          </header>
+
+          <div className="compra__cuerpo">
+            {compra.estado_pago === 'rechazado' && compra.motivo_rechazo && (
+              <p className="viajes__error">El pago fue rechazado: {compra.motivo_rechazo}</p>
+            )}
+
+            <div className="boletos">
+              {compra.boletos.map((b) => (
+                <div key={b.id} className="boleto">
+                  <span className="boleto__asiento"><span><small>ASIENTO</small>{b.numero_asiento}</span></span>
+                  <div>
+                    <strong>{b.pasajero_nombre}</strong>
+                    <span>{NOMBRE_BOLETO[b.estado] || b.estado} · {dinero(b.precio_final)}</span>
+                  </div>
+                  {(b.estado === 'emitido' || b.estado === 'usado') ? (
+                    <button type="button" className="viajes__boton viajes__boton--claro" onClick={() => descargarBoleto(b.codigo, setError)}>
+                      Descargar boleto
                     </button>
-                  </>
-                )}
-              </li>
-            ))}
-          </ul>
+                  ) : <span />}
+                </div>
+              ))}
+            </div>
 
-          {compra.estado_pago === 'pendiente' && compra.requiere_comprobante && (
-            <FormularioComprobante compraId={compra.id} alSubir={comprobanteSubido} />
-          )}
-          {compra.comprobante_url && (
-            <p><a href={compra.comprobante_url} target="_blank" rel="noreferrer">Ver comprobante enviado</a></p>
-          )}
+            <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: '.75rem', marginTop: '1rem', color: 'var(--v-suave)', fontSize: '.88rem', fontWeight: 600 }}>
+              <span>Compra N.º {compra.id} · {compra.metodo_pago}</span>
+              <span>Total <strong style={{ color: 'var(--v-texto)', fontSize: '1.05rem' }}>{dinero(compra.total)}</strong></span>
+            </div>
+
+            {compra.estado_pago === 'pendiente' && compra.requiere_comprobante && (
+              <FormularioComprobante compraId={compra.id} total={compra.total} alSubir={comprobanteSubido} />
+            )}
+            {compra.comprobante_url && (
+              <p style={{ margin: '1rem 0 0' }}><a href={compra.comprobante_url} target="_blank" rel="noreferrer">Ver el comprobante enviado</a></p>
+            )}
+          </div>
         </article>
       ))}
     </section>
