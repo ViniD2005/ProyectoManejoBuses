@@ -1,3 +1,4 @@
+
 import { Routes, Route } from 'react-router-dom'
 import MainLayout from './layouts/MainLayout.jsx'
 import RutaProtegida from './components/RutaProtegida.jsx'
@@ -42,6 +43,8 @@ import SeleccionAsientos from './pages/cliente/SeleccionAsientos.jsx'
 import Comprar from './pages/cliente/Comprar.jsx'
 // CC-15 - Personal del bus
 import Abordaje from './pages/personal/Abordaje.jsx'
+// CC-24 - Apariencia de cada cooperativa
+import MiCooperativa from './pages/cooperativa/MiCooperativa.jsx'
 
 function App() {
   return (
@@ -76,6 +79,7 @@ function App() {
           <Route path="/cooperativa/hojas-ruta" element={<HojasRuta />} />
           <Route path="/cooperativa/turnos" element={<Turnos />} />
           <Route path="/cooperativa/hoja-semanal" element={<HojaSemanal />} />
+          <Route path="/cooperativa/apariencia" element={<MiCooperativa />} />
         </Route>
 
         {/* CC-15 - Personal del bus (solo personal_bus) */}

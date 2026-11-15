@@ -1,12 +1,46 @@
+
+import { useEffect, useState } from 'react'
 import { Link, Outlet } from 'react-router-dom'
 import { useConfiguracion } from '../hooks/useConfiguracion.js'
 import PieDePagina from '../components/PieDePagina.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import Notificaciones from '../components/Notificaciones.jsx'
+import { EVENTO_APARIENCIA } from '../utils/temaCooperativa.js'
 
 function MainLayout() {
   const { usuario, cerrarSesion } = useAuth()
   const configuracion = useConfiguracion()
+
+  const [cooperativa, setCooperativa] = useState(
+    () => window.__aparienciaCooperativa || null
+  )
+
+  useEffect(() => {
+    const actualizarApariencia = () => {
+      setCooperativa(window.__aparienciaCooperativa || null)
+    }
+
+    window.addEventListener(EVENTO_APARIENCIA, actualizarApariencia)
+
+    actualizarApariencia()
+
+    return () => {
+      window.removeEventListener(EVENTO_APARIENCIA, actualizarApariencia)
+    }
+  }, [])
+
+  const tieneCooperativa =
+    ['cooperativa', 'oficinista', 'personal_bus'].includes(usuario?.rol) &&
+    usuario?.cooperativa_id &&
+    cooperativa
+
+  const nombre = tieneCooperativa
+    ? cooperativa.nombre || configuracion.nombre_app
+    : configuracion.nombre_app
+
+  const logo = tieneCooperativa
+    ? cooperativa.logo_url
+    : configuracion.logo_url
 
   // Recarga la app en /login: así el próximo inicio de sesión
   // no intenta volver a una página de otro rol.
@@ -19,8 +53,8 @@ function MainLayout() {
     <div className="layout">
       <header className="layout__header">
         <Link to="/" className="layout__marca">
-          {configuracion.logo_url && <img src={configuracion.logo_url} alt="" className="layout__logo" />}
-          {configuracion.nombre_app}
+          {logo && <img src={logo} alt={nombre} className="layout__logo" />}
+          <span>{nombre}</span>
         </Link>
         <nav className="layout__nav">
           {usuario?.rol === 'admin' && (
@@ -41,7 +75,7 @@ function MainLayout() {
               <Link to="/cooperativa/hojas-ruta">Hojas de ruta</Link>
               <Link to="/cooperativa/turnos">Turnos</Link>
               <Link to="/cooperativa/hoja-semanal">Hoja semanal</Link>
-
+              <Link to="/cooperativa/apariencia">Apariencia</Link>
             </>
           )}
           {usuario?.rol === 'oficinista' && (
