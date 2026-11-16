@@ -11,4 +11,8 @@ rutas.get('/', controlador.listar)
 rutas.post('/', controlador.crear)
 rutas.patch('/:id/estado', controlador.cambiarEstado)
 
+// CC-22: solo el administrador busca usuarios registrados y les asigna un rol
+rutas.get('/buscar', permitirRoles('admin'), controlador.buscar)          // ?texto=
+rutas.patch('/:id/rol', permitirRoles('admin'), controlador.asignarRol)   // { rol, cooperativa_id }
+
 module.exports = rutas
