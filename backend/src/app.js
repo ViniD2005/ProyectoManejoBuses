@@ -107,42 +107,8 @@ app.use((req, res) => {
 // MANEJADOR DE ERRORES
 // ========================================
 
-app.use((err, req, res, next) => {
-
-  // Registro duplicado en PostgreSQL
-  if (err.code === '23505') {
-    return res.status(409).json({
-      mensaje: 'Ya existe un registro con esos datos'
-    })
-  }
-
-  // Error de clave foranea
-  if (err.code === '23503') {
-    return res.status(409).json({
-      mensaje: 'El registro está relacionado con otros datos'
-    })
-  }
-
-  // Conflicto de asiento vendido
-  if (err.code === '23P01') {
-    return res.status(409).json({
-      mensaje: 'El asiento ya está vendido en ese tramo'
-    })
-  }
-
-  // Registrar errores inesperados
-  if (!err.status) {
-    console.error(err)
-  }
-
-  // Respuesta de error
-  res.status(err.status || 500).json({
-    mensaje: err.status
-      ? err.message
-      : 'Error interno del servidor',
-    detalles: err.detalles
-  })
-})
+// CC-21 - Mensajes de error claros para el usuario final
+app.use(require('./middlewares/errores'))
 
 // ========================================
 // EXPORTAR APLICACION
