@@ -1,47 +1,51 @@
-const servicio = require('./cooperativas.service');
+const servicio = require('./cooperativas.service')
 
 const listar = async (req, res) => {
-  const cooperativas = await servicio.listarCooperativas();
-  res.json(cooperativas);
-};
+  res.json(await servicio.listarCooperativas())
+}
 
 const obtenerPorId = async (req, res) => {
-  const { id } = req.params;
-  const cooperativa = await servicio.obtenerCooperativaPorId(id);
-  if (!cooperativa) {
-    return res.status(404).json({ mensaje: 'Cooperativa no encontrada' });
-  }
-  res.json(cooperativa);
-};
+  const cooperativa = await servicio.obtenerCooperativaPorId(req.params.id)
+  if (!cooperativa) return res.status(404).json({ mensaje: 'Cooperativa no encontrada' })
+  res.json(cooperativa)
+}
+
+// CC-23: listado con responsables y búsqueda de candidatos (solo admin)
+const listarGestion = async (req, res) => {
+  res.json(await servicio.listarParaGestion())
+}
+
+const listarCandidatos = async (req, res) => {
+  res.json(await servicio.listarCandidatos(req.query.texto))
+}
 
 const crear = async (req, res) => {
-  const nueva = await servicio.crearCooperativa(req.body);
-  res.status(201).json(nueva);
-};
+  res.status(201).json(await servicio.crearCooperativa(req.body))
+}
 
 const actualizar = async (req, res) => {
-  const { id } = req.params;
-  const actualizada = await servicio.actualizarCooperativa(id, req.body);
-  if (!actualizada) {
-    return res.status(404).json({ mensaje: 'Cooperativa no encontrada para actualizar' });
-  }
-  res.json(actualizada);
-};
+  const actualizada = await servicio.actualizarCooperativa(req.params.id, req.body)
+  if (!actualizada) return res.status(404).json({ mensaje: 'Cooperativa no encontrada' })
+  res.json(actualizada)
+}
 
 const cambiarEstado = async (req, res) => {
-  const { id } = req.params;
-  const { activa } = req.body;
-  const modificada = await servicio.cambiarEstadoCooperativa(id, activa);
-  if (!modificada) {
-    return res.status(404).json({ mensaje: 'Cooperativa no encontrada' });
-  }
-  res.json(modificada);
-};
+  const modificada = await servicio.cambiarEstadoCooperativa(req.params.id, req.body.activa)
+  if (!modificada) return res.status(404).json({ mensaje: 'Cooperativa no encontrada' })
+  res.json(modificada)
+}
+
+const asignarResponsable = async (req, res) => {
+  res.json(await servicio.asignarResponsable(req.params.id, req.body.usuario_id))
+}
 
 module.exports = {
   listar,
   obtenerPorId,
+  listarGestion,
+  listarCandidatos,
   crear,
   actualizar,
   cambiarEstado,
-};
+  asignarResponsable,
+}

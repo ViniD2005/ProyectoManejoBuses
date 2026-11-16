@@ -1,21 +1,21 @@
-const express = require('express');
-const router = express.Router();
-const controlador = require('./cooperativas.controller');
-const { autenticar, permitirRoles } = require('../../middlewares/auth');
+const { Router } = require('express')
+const controlador = require('./cooperativas.controller')
+const { autenticar, permitirRoles } = require('../../middlewares/auth')
 
-// GET /api/cooperativas
-router.get('/', controlador.listar);
+const rutas = Router()
+const soloAdmin = [autenticar, permitirRoles('admin')]
 
-// GET /api/cooperativas/:id
-router.get('/:id', controlador.obtenerPorId);
+// Públicas: listado y detalle básico (búsqueda de viajes, formularios)
+rutas.get('/', controlador.listar)
 
-// POST /api/cooperativas
-router.post('/', autenticar, permitirRoles('admin'), controlador.crear);
+// CC-23: gestión del administrador (van antes de /:id)
+rutas.get('/gestion', ...soloAdmin, controlador.listarGestion)
+rutas.get('/candidatos', ...soloAdmin, controlador.listarCandidatos)   // ?texto=
 
-// PUT /api/cooperativas/:id
-router.put('/:id', autenticar, permitirRoles('admin'), controlador.actualizar);
+rutas.get('/:id', controlador.obtenerPorId)
+rutas.post('/', ...soloAdmin, controlador.crear)
+rutas.put('/:id', ...soloAdmin, controlador.actualizar)
+rutas.patch('/:id/estado', ...soloAdmin, controlador.cambiarEstado)
+rutas.post('/:id/responsables', ...soloAdmin, controlador.asignarResponsable)  // { usuario_id }
 
-// PATCH /api/cooperativas/:id/estado
-router.patch('/:id/estado', autenticar, permitirRoles('admin'), controlador.cambiarEstado);
-
-module.exports = router;
+module.exports = rutas
