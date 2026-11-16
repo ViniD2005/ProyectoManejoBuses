@@ -85,6 +85,9 @@ app.use('/api/pagos', require('./modules/pagos/pagos.routes'))
 // CC-13 - Turnos y hoja de ruta semanal
 app.use('/api/turnos', require('./modules/turnos/turnos.routes'))
 
+// CC-24 - Apariencia de cada cooperativa
+app.use('/api/apariencia', require('./modules/apariencia/apariencia.routes'))
+
 // CC-6 - Boletos en PDF con codigo QR
 app.use('/api/boletos', require('./modules/boletos/boletos.routes'))
 // CC-15 - Abordaje del personal del bus
