@@ -30,6 +30,40 @@ Todos los usuarios reciben **notificaciones dentro de la aplicación** en cada p
 - [Node.js 22 LTS](https://nodejs.org/)
 - [PostgreSQL 17](https://www.postgresql.org/download/) con pgAdmin 4
 
+
+## Instalación con Docker (recomendada)
+
+Con Docker no hace falta instalar PostgreSQL ni crear la base a mano, y **los datos se guardan entre reinicios**.
+
+Requisito: [Docker Desktop](https://www.docker.com/products/docker-desktop/) abierto.
+
+```bash
+cp .env.example .env          # opcional: cambia JWT_SECRET
+docker compose up -d --build  # la primera vez tarda unos minutos
+```
+
+| Servicio | Dirección |
+|---|---|
+| Aplicación | http://localhost:5173 |
+| API | http://localhost:3000/api |
+| pgAdmin | http://localhost:5050 (servidor *Pasajes Ecuador*, contraseña `postgres`) |
+| PostgreSQL | `localhost:5433`, usuario `postgres`, contraseña `postgres` |
+
+La primera vez que arranca, la base ejecuta todos los scripts de `backend/database` en orden. Después **ya no se vuelven a ejecutar**: lo que registres (usuarios, compras, buses…) queda guardado en el volumen `datos_postgres`.
+
+| Necesito… | Comando |
+|---|---|
+| Apagar (conserva los datos) | `docker compose down` |
+| Ver mensajes del backend | `docker compose logs -f backend` |
+| Ejecutar un script nuevo de `backend/database` | `docker compose exec -T db psql -U postgres -d buses_db < backend/database/007_ejemplo.sql` |
+| Instalar una dependencia nueva tras un `git pull` | `docker compose up -d --build` |
+| Empezar de cero (borra todos los datos) | `docker compose down -v` y luego `docker compose up -d --build` |
+
+Los viajes para nuevas fechas se generan desde la **Hoja semanal** de la cooperativa, así que no es necesario recrear la base.
+
+> El código de `backend/src` y `frontend` se edita normalmente en tu PC: el backend y el frontend se recargan solos.
+
+
 ## Instalación
 
 ### 1. Clonar el repositorio
