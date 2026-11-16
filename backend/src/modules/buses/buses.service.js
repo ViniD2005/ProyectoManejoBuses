@@ -1,5 +1,6 @@
 const fs = require('fs')
 const { pool, transaccion } = require('../../config/db')
+const { agregar, validarPlaca, validarTexto } = require('../../utils/validaciones')
 
 function errorHttp(mensaje, status, detalles) {
   const error = new Error(mensaje)
@@ -12,20 +13,30 @@ const CAMPOS = `id, numero_disco, placa, marca_chasis, marca_carroceria,
   anio_fabricacion, foto_url, pisos, activo`
 
 function validar(datos, esNuevo) {
+  // CC-21: reglas completas del bus
   const errores = {}
-  if (!datos.numero_disco?.toString().trim()) errores.numero_disco = 'El número de disco es obligatorio'
-  if (!datos.placa?.trim()) errores.placa = 'La placa es obligatoria'
-  if (!datos.marca_chasis?.trim()) errores.marca_chasis = 'La marca del chasis es obligatoria'
-  if (!datos.marca_carroceria?.trim()) errores.marca_carroceria = 'La marca de la carrocería es obligatoria'
+  const disco = String(datos.numero_disco ?? '').trim()
+  if (!disco) errores.numero_disco = 'El número de disco es obligatorio'
+  else if (!/^\d{1,4}$/.test(disco)) errores.numero_disco = 'El número de disco debe tener de 1 a 4 números'
+  agregar(errores, 'placa', validarPlaca(datos.placa))
+  agregar(errores, 'marca_chasis', validarTexto(datos.marca_chasis, 'la marca del chasis', { max: 40 }))
+  agregar(errores, 'marca_carroceria', validarTexto(datos.marca_carroceria, 'la marca de la carrocería', { max: 40 }))
+  if (datos.anio_fabricacion !== undefined && datos.anio_fabricacion !== null && datos.anio_fabricacion !== '') {
+    const anio = Number(datos.anio_fabricacion)
+    const maximo = new Date().getFullYear() + 1
+    if (!Number.isInteger(anio) || anio < 1990 || anio > maximo) {
+      errores.anio_fabricacion = `El año de fabricación debe estar entre 1990 y ${maximo}`
+    }
+  }
   if (![1, 2].includes(Number(datos.pisos))) errores.pisos = 'El bus debe tener 1 o 2 pisos'
   if (esNuevo) {
     const cantidad = Number(datos.cantidad_asientos)
-    if (!Number.isInteger(cantidad) || cantidad < 1 || cantidad > 80) {
-      errores.cantidad_asientos = 'La cantidad de asientos debe estar entre 1 y 80'
+    if (!Number.isInteger(cantidad) || cantidad < 10 || cantidad > 80) {
+      errores.cantidad_asientos = 'La cantidad de asientos debe estar entre 10 y 80'
     }
     if (!datos.tipo_asiento_id) errores.tipo_asiento_id = 'Elige el tipo de asiento por defecto'
   }
-  if (Object.keys(errores).length) throw errorHttp('Revisa los datos del bus', 400, errores)
+  if (Object.keys(errores).length) throw errorHttp('Revisa los datos marcados del bus', 400, errores)
 }
 
 // Buses de la cooperativa del usuario, con su número de asientos

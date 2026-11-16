@@ -1,4 +1,5 @@
 const { pool } = require('../../config/db')
+const { agregar, validarTexto } = require('../../utils/validaciones')
 
 function errorHttp(mensaje, status, detalles) {
   const error = new Error(mensaje)
@@ -8,13 +9,14 @@ function errorHttp(mensaje, status, detalles) {
 }
 
 function validar({ nombre, factor_precio }) {
+  // CC-21: nombre y factor dentro de rangos razonables
   const errores = {}
-  if (!nombre?.trim()) errores.nombre = 'El nombre es obligatorio'
+  agregar(errores, 'nombre', validarTexto(nombre, 'el nombre del tipo de asiento', { min: 3, max: 40 }))
   const factor = Number(factor_precio)
-  if (!Number.isFinite(factor) || factor <= 0 || factor > 9.99) {
-    errores.factor_precio = 'El factor debe ser un número mayor a 0 (ej. 1.00 o 1.35)'
+  if (!Number.isFinite(factor) || factor < 0.5 || factor > 3) {
+    errores.factor_precio = 'El factor de precio debe estar entre 0.50 y 3.00 (por ejemplo 1.00 o 1.35)'
   }
-  if (Object.keys(errores).length) throw errorHttp('Revisa los datos', 400, errores)
+  if (Object.keys(errores).length) throw errorHttp('Revisa los datos del tipo de asiento', 400, errores)
 }
 
 // Todas las consultas filtran por la cooperativa del usuario que inició sesión

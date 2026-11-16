@@ -1,7 +1,7 @@
 const fs = require('fs')
 const { pool, transaccion } = require('../../config/db')
 const { notificar, notificarOficinistas } = require('../../utils/notificar')
-const { validarCedula } = require('../../utils/cedula')
+const { validarCedulaEcuador, validarNombreCompleto, limpiar } = require('../../utils/validaciones')
 
 function errorHttp(mensaje, status, detalles) {
   const error = new Error(mensaje)
@@ -56,9 +56,16 @@ async function crear(clienteId, datos, opciones = {}) {
     throw errorHttp('No puedes elegir el mismo asiento dos veces', 400)
   }
   const errores = {}
+  // CC-21: cédula y nombre de cada pasajero, sin cédulas repetidas en la misma compra
+  const cedulasVistas = new Set()
   pasajeros.forEach((p, i) => {
-    if (!validarCedula(p.cedula)) errores[`pasajero_${i + 1}`] = `Cédula no válida del pasajero ${i + 1}`
-    else if (!p.nombre?.trim()) errores[`pasajero_${i + 1}`] = `Falta el nombre del pasajero ${i + 1}`
+    const clave = `pasajero_${i + 1}`
+    const errorCedula = validarCedulaEcuador(p.cedula)
+    const errorNombre = validarNombreCompleto(p.nombre)
+    if (errorCedula) errores[clave] = `Pasajero ${i + 1}: ${errorCedula.charAt(0).toLowerCase()}${errorCedula.slice(1)}`
+    else if (cedulasVistas.has(String(p.cedula).trim())) errores[clave] = `Pasajero ${i + 1}: esta cédula ya está en otro asiento de la misma compra`
+    else if (errorNombre) errores[clave] = `Pasajero ${i + 1}: ${errorNombre.charAt(0).toLowerCase()}${errorNombre.slice(1)}`
+    cedulasVistas.add(String(p.cedula ?? '').trim())
   })
   if (Object.keys(errores).length) throw errorHttp('Revisa los datos de los pasajeros', 400, errores)
 
@@ -118,14 +125,14 @@ async function crear(clienteId, datos, opciones = {}) {
           )
           const nacimiento = registro.rows[0]?.fecha_nacimiento
           if (!nacimiento) {
-            throw errorHttp(`Para el descuento "${tipo.nombre}", el pasajero con cédula ${p.cedula} debe estar registrado`, 400)
+            throw errorHttp(`Para aplicar el descuento "${tipo.nombre}", el pasajero con cédula ${p.cedula} debe tener una cuenta registrada con su fecha de nacimiento`, 400)
           }
           const edad = edadEn(nacimiento, viaje.fecha)
           if (tipo.codigo === 'tercera_edad' && edad < 65) {
-            throw errorHttp(`El pasajero con cédula ${p.cedula} no cumple la edad para tercera edad`, 400)
+            throw errorHttp(`El descuento de tercera edad es para personas de 65 años o más. El pasajero con cédula ${p.cedula} no cumple ese requisito`, 400)
           }
           if (tipo.codigo === 'menor_edad' && edad >= 18) {
-            throw errorHttp(`El pasajero con cédula ${p.cedula} no es menor de edad`, 400)
+            throw errorHttp(`El descuento de menor de edad es para personas de menos de 18 años. El pasajero con cédula ${p.cedula} no cumple ese requisito`, 400)
           }
         }
         // Discapacidad: la verifica el oficinista con el carné al validar el pago
@@ -137,7 +144,7 @@ async function crear(clienteId, datos, opciones = {}) {
         asiento_id: Number(p.asiento_id),
         numero_asiento: asiento.rows[0].numero,
         pasajero_cedula: p.cedula,
-        pasajero_nombre: p.nombre.trim(),
+        pasajero_nombre: limpiar(p.nombre),
         tipo_descuento_id: tipoDescuentoId,
         precio_base: precioBase,
         descuento,
