@@ -19,6 +19,11 @@ const listarCandidatos = async (req, res) => {
   res.json(await servicio.listarCandidatos(req.query.texto))
 }
 
+// GC-11: paso 1 del registro (solo revisa, no guarda nada)
+const validar = async (req, res) => {
+  res.json(await servicio.validarDatosCooperativa(req.body))
+}
+
 const crear = async (req, res) => {
   res.status(201).json(await servicio.crearCooperativa(req.body))
 }
@@ -44,6 +49,7 @@ module.exports = {
   obtenerPorId,
   listarGestion,
   listarCandidatos,
+  validar,
   crear,
   actualizar,
   cambiarEstado,

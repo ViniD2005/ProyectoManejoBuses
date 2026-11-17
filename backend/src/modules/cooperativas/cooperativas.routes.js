@@ -11,6 +11,8 @@ rutas.get('/', controlador.listar)
 // CC-23: gestión del administrador (van antes de /:id)
 rutas.get('/gestion', ...soloAdmin, controlador.listarGestion)
 rutas.get('/candidatos', ...soloAdmin, controlador.listarCandidatos)   // ?texto=
+// GC-11: paso 1 del registro en dos pantallas (solo revisa los datos)
+rutas.post('/validar', ...soloAdmin, controlador.validar)
 
 rutas.get('/:id', controlador.obtenerPorId)
 rutas.post('/', ...soloAdmin, controlador.crear)
