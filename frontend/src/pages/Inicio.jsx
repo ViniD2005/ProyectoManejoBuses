@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import api from '../services/api.js'
 import Icono from '../components/Icono.jsx'
+import { useAuth, INICIO_POR_ROL } from '../context/AuthContext.jsx'
 
 // Frente D - Busqueda de viajes
 import BuscarViajes from './cliente/BuscarViajes.jsx'
@@ -22,6 +23,7 @@ const PASOS = [
 
 // Página principal (rediseño CC-19)
 function Inicio() {
+  const { usuario, cargando } = useAuth()
   const [cooperativas, setCooperativas] = useState([])
 
   useEffect(() => {
@@ -29,6 +31,10 @@ function Inicio() {
       .then(({ data }) => setCooperativas((Array.isArray(data) ? data : []).filter((c) => c.activa !== false)))
       .catch(() => {})
   }, [])
+
+  // GC-9: el personal (admin y cooperativas) no compra pasajes: va a su propio inicio
+  if (cargando) return <div className="cargando"><span className="giro" /> Cargando…</div>
+  if (usuario && usuario.rol !== 'cliente') return <Navigate to={INICIO_POR_ROL[usuario.rol] || '/'} replace />
 
   return (
     <>

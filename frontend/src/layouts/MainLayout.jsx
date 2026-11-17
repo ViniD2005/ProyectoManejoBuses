@@ -30,6 +30,8 @@ const MENU = {
     ] },
   ],
   cooperativa: [
+    // GC-9: panel de inicio
+    { grupo: 'General', enlaces: [{ a: '/panel', texto: 'Inicio', icono: 'inicio' }] },
     { grupo: 'Flota', enlaces: [
       { a: '/buses', texto: 'Buses', icono: 'bus' },
       { a: '/cooperativa/tipos-asiento', texto: 'Tipos de asiento', icono: 'asiento' },
@@ -46,12 +48,16 @@ const MENU = {
     ] },
   ],
   oficinista: [
+    // GC-9: panel de inicio
+    { grupo: 'General', enlaces: [{ a: '/panel', texto: 'Inicio', icono: 'inicio' }] },
     { grupo: 'Ventanilla', enlaces: [
       { a: '/oficinista/vender', texto: 'Vender boletos', icono: 'boleto' },
       { a: '/oficinista/pagos', texto: 'Validar pagos', icono: 'tarjeta' },
     ] },
   ],
   personal_bus: [
+    // GC-9: panel de inicio
+    { grupo: 'General', enlaces: [{ a: '/panel', texto: 'Inicio', icono: 'inicio' }] },
     { grupo: 'En el bus', enlaces: [
       { a: '/personal/abordaje', texto: 'Abordaje', icono: 'qr' },
     ] },
