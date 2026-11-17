@@ -45,6 +45,8 @@ import Comprar from './pages/cliente/Comprar.jsx'
 import Abordaje from './pages/personal/Abordaje.jsx'
 // CC-24 - Apariencia de cada cooperativa
 import MiCooperativa from './pages/cooperativa/MiCooperativa.jsx'
+// GC-9 - Panel de inicio del personal de la cooperativa
+import PanelInicio from './pages/panel/PanelInicio.jsx'
 
 function App() {
   return (
@@ -82,6 +84,11 @@ function App() {
           <Route path="/cooperativa/apariencia" element={<MiCooperativa />} />
         </Route>
 
+        {/* GC-9 - Panel de inicio del personal de la cooperativa */}
+        <Route element={<RutaProtegida roles={['cooperativa', 'oficinista', 'personal_bus']} />}>
+          <Route path="/panel" element={<PanelInicio />} />
+        </Route>
+        
         {/* CC-15 - Personal del bus (solo personal_bus) */}
         <Route element={<RutaProtegida roles={['personal_bus']} />}>
           <Route path="/personal/abordaje" element={<Abordaje />} />
