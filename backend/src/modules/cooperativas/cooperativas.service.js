@@ -175,6 +175,17 @@ async function revisarDuplicados(datos, idActual = null) {
     { usuario_id }                                    -> un cliente registrado pasa a ser el usuario de la cooperativa
     { nuevo: { cedula, nombres, apellidos, email, telefono, password } }  -> se crea su cuenta
 */
+/*
+  GC-11: paso 1 del registro en dos pantallas.
+  Revisa solo los datos de la cooperativa (sin el responsable) para que el
+  administrador corrija los errores antes de pasar a elegir el usuario.
+*/
+const validarDatosCooperativa = async (datos) => {
+  const errores = { ...erroresCooperativa(datos), ...(await revisarDuplicados(datos)) }
+  if (Object.keys(errores).length) throw errorHttp('Revisa los datos marcados de la cooperativa', 400, errores)
+  return { valido: true }
+}
+
 const crearCooperativa = async (datos) => {
   const errores = { ...erroresCooperativa(datos), ...(await revisarDuplicados(datos)) }
   const responsable = datos.responsable || {}
@@ -284,6 +295,7 @@ const asignarResponsable = async (id, usuarioId) => {
 }
 
 module.exports = {
+  validarDatosCooperativa,
   validarRuc,
   listarCooperativas,
   obtenerCooperativaPorId,

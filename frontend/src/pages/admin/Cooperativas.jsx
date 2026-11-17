@@ -214,12 +214,47 @@ function BuscadorCandidatos({ elegido, alElegir, error }) {
   )
 }
 
-// Panel para crear o editar una cooperativa
+// Indicador de pasos del registro (GC-11)
+function Pasos({ actual }) {
+  const pasos = ['Datos de la cooperativa', 'Usuario responsable']
+  return (
+    <ol style={{ display: 'flex', gap: '.5rem', listStyle: 'none', padding: 0, margin: '0 0 1.25rem' }} aria-label="Pasos del registro">
+      {pasos.map((texto, i) => {
+        const numero = i + 1
+        const hecho = numero < actual
+        const activo = numero === actual
+        return (
+          <li key={texto} style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '.55rem', padding: '.6rem .75rem', borderRadius: 12,
+            border: `1.5px solid ${activo ? 'var(--marca)' : 'var(--borde)'}`, background: activo ? 'var(--marca-suave)' : 'var(--superficie)' }}
+            aria-current={activo ? 'step' : undefined}>
+            <span style={{ display: 'grid', placeItems: 'center', width: 28, height: 28, flex: 'none', borderRadius: '50%', fontWeight: 800, fontSize: '.85rem',
+              background: hecho ? 'var(--exito)' : activo ? 'var(--marca)' : 'var(--borde)', color: hecho || activo ? '#fff' : 'var(--texto-suave)' }}>
+              {hecho ? '✓' : numero}
+            </span>
+            <span style={{ fontSize: '.85rem', fontWeight: 700, color: activo ? 'var(--texto)' : 'var(--texto-suave)', lineHeight: 1.2 }}>
+              <span style={{ display: 'block', fontSize: '.7rem', letterSpacing: '.06em', textTransform: 'uppercase', opacity: .8 }}>Paso {numero}</span>
+              {texto}
+            </span>
+          </li>
+        )
+      })}
+    </ol>
+  )
+}
+
+/*
+  Panel para crear o editar una cooperativa.
+  GC-11: el registro es en dos pantallas:
+    1. Datos de la cooperativa -> "Siguiente" (el servidor los revisa, sin guardar)
+    2. Usuario responsable     -> "Registrar cooperativa"
+  La edición sigue siendo una sola pantalla.
+*/
 function PanelCooperativa({ cooperativa, alCerrar, alGuardar }) {
   const editando = Boolean(cooperativa)
   const [form, setForm] = useState(editando
     ? { nombre: cooperativa.nombre, ruc: cooperativa.ruc, telefono: cooperativa.telefono || '', email: cooperativa.email || '', direccion: cooperativa.direccion || '' }
     : VACIO)
+  const [paso, setPaso] = useState(1)
   const [modo, setModo] = useState('registrado')
   const [usuarioId, setUsuarioId] = useState(null)
   const [nuevo, setNuevo] = useState(NUEVO_VACIO)
@@ -240,9 +275,35 @@ function PanelCooperativa({ cooperativa, alCerrar, alGuardar }) {
     setErrores({ ...errores, [e.target.name]: '' })
   }
 
+  // Paso 1 -> 2: el servidor revisa los datos (formato, RUC del SRI, nombre y RUC repetidos)
+  const siguiente = async () => {
+    setError('')
+    setEnviando(true)
+    try {
+      await api.post('/cooperativas/validar', form)
+      setErrores({})
+      setPaso(2)
+    } catch (err) {
+      setError(mensajeDeError(err))
+      setErrores(err.response?.data?.detalles || {})
+    } finally {
+      setEnviando(false)
+    }
+  }
+
+  const anterior = () => {
+    setError('')
+    setPaso(1)
+  }
+
   const guardar = async (e) => {
     e.preventDefault()
+    if (!editando && paso === 1) return siguiente()
     setError('')
+    if (!editando && modo === 'registrado' && !usuarioId) {
+      setErrores({ ...errores, responsable: 'Busca y elige al usuario que administrará la cooperativa' })
+      return
+    }
     setEnviando(true)
     try {
       if (editando) {
@@ -256,11 +317,28 @@ function PanelCooperativa({ cooperativa, alCerrar, alGuardar }) {
       }
     } catch (err) {
       setError(mensajeDeError(err))
-      setErrores(err.response?.data?.detalles || {})
+      const detalles = err.response?.data?.detalles || {}
+      setErrores(detalles)
+      // Si otro administrador registró el mismo nombre o RUC mientras tanto, vuelve al paso 1
+      if (!editando && Object.keys(detalles).some((campo) => Object.keys(VACIO).includes(campo))) setPaso(1)
     } finally {
       setEnviando(false)
     }
   }
+
+  const datosCooperativa = (
+    <>
+      <span className="etiqueta-seccion">Datos de la cooperativa</span>
+      <Campo nombre="nombre" etiqueta="Nombre" valor={form.nombre} alCambiar={cambiar} error={errores.nombre} placeholder="Ej. Cooperativa de Transportes Ambato" />
+      <Campo nombre="ruc" etiqueta="RUC" valor={form.ruc} alCambiar={cambiar} error={errores.ruc} inputMode="numeric" placeholder="13 dígitos, termina en 001"
+        ayuda="Lo validamos con el algoritmo del SRI." />
+      <div className="rejilla-2">
+        <Campo nombre="telefono" etiqueta="Teléfono" valor={form.telefono} alCambiar={cambiar} error={errores.telefono} inputMode="tel" placeholder="032XXXXXX o 09XXXXXXXX" />
+        <Campo nombre="email" etiqueta="Correo de contacto" valor={form.email} alCambiar={cambiar} error={errores.email} type="email" placeholder="contacto@cooperativa.com" />
+      </div>
+      <Campo nombre="direccion" etiqueta="Dirección" valor={form.direccion} alCambiar={cambiar} error={errores.direccion} placeholder="Ej. Terminal Terrestre de Ambato, oficina 12" />
+    </>
+  )
 
   return (
     <div className="capa" onMouseDown={(e) => { if (e.target === e.currentTarget) alCerrar() }}>
@@ -268,27 +346,36 @@ function PanelCooperativa({ cooperativa, alCerrar, alGuardar }) {
         <div className="panel__cabecera">
           <div>
             <h2>{editando ? `Editar ${cooperativa.nombre}` : 'Nueva cooperativa'}</h2>
-            <p>{editando ? 'Actualiza los datos de contacto de la cooperativa.' : 'Datos de la cooperativa y de quién la administrará.'}</p>
+            <p>
+              {editando
+                ? 'Actualiza los datos de contacto de la cooperativa.'
+                : paso === 1 ? 'Primero, los datos de la cooperativa.' : 'Ahora, elige quién la administrará.'}
+            </p>
           </div>
           <button type="button" className="btn btn--fantasma btn--icono" onClick={alCerrar} aria-label="Cerrar">✕</button>
         </div>
 
         <div className="panel__cuerpo">
+          {!editando && <Pasos actual={paso} />}
           {error && <div className="alerta alerta--error" role="alert">{error}</div>}
 
-          <span className="etiqueta-seccion">Datos de la cooperativa</span>
-          <Campo nombre="nombre" etiqueta="Nombre" valor={form.nombre} alCambiar={cambiar} error={errores.nombre} placeholder="Ej. Cooperativa de Transportes Ambato" />
-          <Campo nombre="ruc" etiqueta="RUC" valor={form.ruc} alCambiar={cambiar} error={errores.ruc} inputMode="numeric" placeholder="13 dígitos, termina en 001"
-            ayuda="Lo validamos con el algoritmo del SRI." />
-          <div className="rejilla-2">
-            <Campo nombre="telefono" etiqueta="Teléfono" valor={form.telefono} alCambiar={cambiar} error={errores.telefono} inputMode="tel" placeholder="032XXXXXX o 09XXXXXXXX" />
-            <Campo nombre="email" etiqueta="Correo de contacto" valor={form.email} alCambiar={cambiar} error={errores.email} type="email" placeholder="contacto@cooperativa.com" />
-          </div>
-          <Campo nombre="direccion" etiqueta="Dirección" valor={form.direccion} alCambiar={cambiar} error={errores.direccion} placeholder="Ej. Terminal Terrestre de Ambato, oficina 12" />
+          {editando && datosCooperativa}
+
+          {/* Los dos pasos quedan montados para no perder lo escrito al ir y volver */}
+          {!editando && <div hidden={paso !== 1}>{datosCooperativa}</div>}
 
           {!editando && (
-            <>
-              <hr />
+            <div hidden={paso !== 2}>
+              <div className="fila fila--entre" style={{ flexWrap: 'nowrap', alignItems: 'flex-start', padding: '.85rem 1rem', marginBottom: '1.25rem',
+                borderRadius: 12, background: 'var(--superficie-2)', border: '1px solid var(--borde)' }}>
+                <div style={{ minWidth: 0 }}>
+                  <strong style={{ display: 'block' }}>{form.nombre}</strong>
+                  <span className="texto-suave" style={{ fontSize: '.85rem' }}>RUC {form.ruc} · {form.telefono} · {form.email}</span>
+                  <span className="texto-suave" style={{ display: 'block', fontSize: '.85rem' }}>{form.direccion}</span>
+                </div>
+                <button type="button" className="btn btn-sm" onClick={anterior}>Editar</button>
+              </div>
+
               <span className="etiqueta-seccion">Usuario responsable</span>
               <p className="texto-suave" style={{ fontSize: '.88rem' }}>
                 Es quien entrará al panel de la cooperativa para registrar buses, frecuencias, personal y su apariencia.
@@ -316,15 +403,29 @@ function PanelCooperativa({ cooperativa, alCerrar, alGuardar }) {
                     type="password" autoComplete="new-password" ayuda="Mínimo 8 caracteres, con mayúscula, minúscula y número." />
                 </>
               )}
-            </>
+            </div>
           )}
         </div>
 
         <div className="panel__pie">
-          <button type="button" className="btn" onClick={alCerrar}>Cancelar</button>
-          <button className="btn btn-primary" disabled={enviando}>
-            {enviando ? 'Guardando…' : editando ? 'Guardar cambios' : 'Registrar cooperativa'}
-          </button>
+          {editando && (
+            <>
+              <button type="button" className="btn" onClick={alCerrar}>Cancelar</button>
+              <button className="btn btn-primary" disabled={enviando}>{enviando ? 'Guardando…' : 'Guardar cambios'}</button>
+            </>
+          )}
+          {!editando && paso === 1 && (
+            <>
+              <button type="button" className="btn" onClick={alCerrar}>Cancelar</button>
+              <button className="btn btn-primary" disabled={enviando}>{enviando ? 'Revisando…' : 'Siguiente →'}</button>
+            </>
+          )}
+          {!editando && paso === 2 && (
+            <>
+              <button type="button" className="btn" onClick={anterior} style={{ marginRight: 'auto' }}>← Anterior</button>
+              <button className="btn btn-primary" disabled={enviando}>{enviando ? 'Guardando…' : 'Registrar cooperativa'}</button>
+            </>
+          )}
         </div>
       </form>
     </div>
