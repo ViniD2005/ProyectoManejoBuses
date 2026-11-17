@@ -88,6 +88,9 @@ app.use('/api/turnos', require('./modules/turnos/turnos.routes'))
 // CC-24 - Apariencia de cada cooperativa
 app.use('/api/apariencia', require('./modules/apariencia/apariencia.routes'))
 
+// GC-9 - Panel de inicio del personal de la cooperativa
+app.use('/api/panel', require('./modules/panel/panel.routes'))
+
 // CC-6 - Boletos en PDF con codigo QR
 app.use('/api/boletos', require('./modules/boletos/boletos.routes'))
 // CC-15 - Abordaje del personal del bus
