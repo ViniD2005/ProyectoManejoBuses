@@ -26,7 +26,11 @@ function Login() {
     setEnviando(true)
     try {
       const usuario = await iniciarSesion(form.email.trim(), form.password)
-      navigate(location.state?.desde || INICIO_POR_ROL[usuario.rol], { replace: true })
+      // GC-10: el personal nunca vuelve a una página de compra; va a su propio inicio
+      const desde = location.state?.desde
+      const soloClientes = ['/comprar', '/mis-boletos']
+      const volverA = desde && !(usuario.rol !== 'cliente' && soloClientes.includes(desde)) ? desde : null
+      navigate(volverA || INICIO_POR_ROL[usuario.rol], { replace: true })
     } catch (err) {
       setError(mensajeDeError(err))
     } finally {

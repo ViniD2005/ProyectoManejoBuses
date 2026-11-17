@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import api from '../../services/api.js'
+import { useAuth } from '../../context/AuthContext.jsx'
 import { dinero } from './formatos.js'
 import './Viajes.css'
 
@@ -16,6 +17,9 @@ function SeleccionAsientos() {
   const { id } = useParams()
   const [parametros] = useSearchParams()
   const navigate = useNavigate()
+  const { usuario } = useAuth()
+  // GC-10: solo los clientes (o visitantes que luego inician sesión) compran en línea
+  const esPersonal = Boolean(usuario) && usuario.rol !== 'cliente'
 
   const subida = parametros.get('subida')
   const bajada = parametros.get('bajada')
@@ -168,12 +172,23 @@ function SeleccionAsientos() {
               <p style={{ color: 'var(--v-suave)', fontSize: '.8rem', margin: '.4rem 0 1rem' }}>
                 Los descuentos de ley se aplican en el siguiente paso.
               </p>
-              <button type="button" className="viajes__boton viajes__boton--bloque" disabled={seleccionados.length !== pasajeros}
-                onClick={continuarCompra}>
-                {seleccionados.length === pasajeros
-                  ? 'Continuar con la compra'
-                  : `Elige ${pasajeros - seleccionados.length} ${pasajeros - seleccionados.length === 1 ? 'asiento más' : 'asientos más'}`}
-              </button>
+              {esPersonal ? (
+                <div className="viajes__aviso" role="status" style={{ display: 'block' }}>
+                  <strong style={{ display: 'block', marginBottom: '.25rem' }}>La compra en línea es solo para clientes</strong>
+                  {usuario.rol === 'oficinista' ? (
+                    <>Para vender a un pasajero usa <Link to="/oficinista/vender">Vender boletos</Link> (venta en ventanilla).</>
+                  ) : (
+                    <>Tu cuenta administra el sistema; la venta en ventanilla la hace el oficinista de la cooperativa.</>
+                  )}
+                </div>
+              ) : (
+                <button type="button" className="viajes__boton viajes__boton--bloque" disabled={seleccionados.length !== pasajeros}
+                  onClick={continuarCompra}>
+                  {seleccionados.length === pasajeros
+                    ? 'Continuar con la compra'
+                    : `Elige ${pasajeros - seleccionados.length} ${pasajeros - seleccionados.length === 1 ? 'asiento más' : 'asientos más'}`}
+                </button>
+              )}
             </div>
           </aside>
         </div>
