@@ -8,6 +8,10 @@ import NoEncontrado from './pages/NoEncontrado.jsx'
 // Tarea 0 - Autenticacion
 import Login from './pages/auth/Login.jsx'
 import Registro from './pages/auth/Registro.jsx'
+// GC-12: verificación de correo y recuperación de contraseña
+import VerificarCorreo from './pages/auth/VerificarCorreo.jsx'
+import OlvideContrasena from './pages/auth/OlvideContrasena.jsx'
+import RestablecerContrasena from './pages/auth/RestablecerContrasena.jsx'
 
 // Frente A - Administracion
 import Cooperativas from './pages/admin/Cooperativas.jsx'
@@ -58,6 +62,9 @@ function App() {
         {/* Tarea 0 - Autenticacion */}
         <Route path="/login" element={<Login />} />
         <Route path="/registro" element={<Registro />} />
+        <Route path="/verificar-correo" element={<VerificarCorreo />} />
+        <Route path="/olvide-contrasena" element={<OlvideContrasena />} />
+        <Route path="/restablecer-contrasena" element={<RestablecerContrasena />} />
 
         {/* Frente A - Administracion (solo admin) */}
         <Route element={<RutaProtegida roles={['admin']} />}>

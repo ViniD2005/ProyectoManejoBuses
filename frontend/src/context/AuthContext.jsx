@@ -38,9 +38,10 @@ export function AuthProvider({ children }) {
     return guardarSesion(data)
   }
 
+  // GC-12: registrarse ya NO inicia sesión; primero se confirma el correo
   const registrarse = async (datos) => {
     const { data } = await api.post('/auth/registro', datos)
-    return guardarSesion(data)
+    return data
   }
 
   const cerrarSesion = () => {

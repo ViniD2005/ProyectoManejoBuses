@@ -47,6 +47,7 @@ docker compose up -d --build  # la primera vez tarda unos minutos
 | Aplicación | http://localhost:5173 |
 | API | http://localhost:3000/api |
 | pgAdmin | http://localhost:5050 (servidor *Pasajes Ecuador*, contraseña `postgres`) |
+| MailHog (correos de prueba) | http://localhost:8025 |
 | PostgreSQL | `localhost:5433`, usuario `postgres`, contraseña `postgres` |
 
 La primera vez que arranca, la base ejecuta todos los scripts de `backend/database` en orden. Después **ya no se vuelven a ejecutar**: lo que registres (usuarios, compras, buses…) queda guardado en el volumen `datos_postgres`.
@@ -62,6 +63,24 @@ La primera vez que arranca, la base ejecuta todos los scripts de `backend/databa
 Los viajes para nuevas fechas se generan desde la **Hoja semanal** de la cooperativa, así que no es necesario recrear la base.
 
 > El código de `backend/src` y `frontend` se edita normalmente en tu PC: el backend y el frontend se recargan solos.
+
+### Correos de prueba con MailHog (GC-12)
+
+El sistema envía correos reales por SMTP: **confirmación de la cuenta**, **bienvenida**, **recuperación de contraseña** y **aviso de contraseña cambiada**. En desarrollo ninguno sale a internet: todos llegan a **MailHog**, una bandeja falsa que se abre en http://localhost:8025 (sirve cualquier correo, incluso `ana@prueba.com`).
+
+1. Regístrate en http://localhost:5173/registro → aparece *«¡Ya casi! Confirma tu correo»*.
+2. Abre http://localhost:8025 → correo *«Confirma tu correo para activar tu cuenta»* → **Confirmar mi correo**.
+3. La cuenta queda activa, llega el correo de bienvenida y ya puedes iniciar sesión.
+4. En **Iniciar sesión → ¿Olvidaste tu contraseña?** pide el enlace, ábrelo desde MailHog y crea la nueva contraseña.
+
+| Regla | Valor |
+|---|---|
+| Enlace de confirmación | dura 24 horas, sirve una vez |
+| Enlace de recuperación | dura 30 minutos, sirve una vez |
+| Pedir otro correo | cada 60 segundos; el enlace anterior deja de servir |
+| Usuarios que ya existían y personal creado por el admin o la cooperativa | quedan confirmados |
+
+> Si MailHog está apagado el registro sigue funcionando: el backend escribe el enlace en `docker compose logs backend`.
 
 
 ## Instalación

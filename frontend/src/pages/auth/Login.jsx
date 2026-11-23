@@ -4,12 +4,16 @@ import { useAuth, INICIO_POR_ROL } from '../../context/AuthContext.jsx'
 import { mensajeDeError } from '../../services/api.js'
 import Icono from '../../components/Icono.jsx'
 import ArteAcceso from './ArteAcceso.jsx'
+import { BotonReenviar } from './PiezasCorreo.jsx'
+import './Correo.css'
 
 function Login() {
   const { iniciarSesion } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const [form, setForm] = useState({ email: '', password: '' })
+  const [form, setForm] = useState({ email: location.state?.email || '', password: '' })
+  // GC-12: cuenta creada pero el correo aún no se confirma
+  const [sinVerificar, setSinVerificar] = useState('')
   const [verClave, setVerClave] = useState(false)
   const [error, setError] = useState('')
   const [enviando, setEnviando] = useState(false)
@@ -23,6 +27,7 @@ function Login() {
       return
     }
     setError('')
+    setSinVerificar('')
     setEnviando(true)
     try {
       const usuario = await iniciarSesion(form.email.trim(), form.password)
@@ -32,7 +37,9 @@ function Login() {
       const volverA = desde && !(usuario.rol !== 'cliente' && soloClientes.includes(desde)) ? desde : null
       navigate(volverA || INICIO_POR_ROL[usuario.rol], { replace: true })
     } catch (err) {
-      setError(mensajeDeError(err))
+      const detalles = err.response?.data?.detalles
+      if (detalles?.correo_no_verificado) setSinVerificar(detalles.email)
+      else setError(mensajeDeError(err))
     } finally {
       setEnviando(false)
     }
@@ -50,6 +57,22 @@ function Login() {
           <h1>Iniciar sesión</h1>
           <p>Ingresa con el correo y la contraseña de tu cuenta.</p>
 
+          {location.state?.verificado && !error && !sinVerificar && (
+            <div className="alerta alerta--exito" role="status">
+              <Icono nombre="checkCirculo" /> Tu correo está confirmado. Ingresa con tu contraseña.
+            </div>
+          )}
+          {sinVerificar && (
+            <div className="alerta alerta--aviso" role="alert">
+              <Icono nombre="correo" />
+              <div style={{ flex: 1 }}>
+                <strong>Confirma tu correo para ingresar</strong>
+                Te enviamos un enlace a {sinVerificar}. Si no lo encuentras, revisa spam o pide uno nuevo.
+                <BotonReenviar ruta="/auth/reenviar-verificacion" email={sinVerificar} esperaInicial={0}
+                  texto="Reenviar el correo de confirmación" clase="btn btn-sm" />
+              </div>
+            </div>
+          )}
           {location.state?.expirada && !error && (
             <div className="alerta alerta--info" role="status">
               <Icono nombre="info" /> Tu sesión expiró por seguridad. Vuelve a iniciar sesión para continuar.
@@ -75,6 +98,9 @@ function Login() {
                 <Icono nombre={verClave ? 'ojoCerrado' : 'ojo'} tam={18} />
               </button>
             </div>
+          </div>
+          <div className="acceso__olvide">
+            <Link to="/olvide-contrasena" state={{ email: form.email.trim() }}>¿Olvidaste tu contraseña?</Link>
           </div>
 
           <button className="btn btn-primary btn--lg btn--bloque" disabled={enviando}>
