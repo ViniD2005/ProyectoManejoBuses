@@ -12,7 +12,7 @@ async function buscarViajes(filtros) {
   const {
     origen, destino, fecha, cooperativa = null,
     tipoAsiento = null, marcaChasis = null,
-    marcaCarroceria = null, tipoViaje = null,
+    marcaCarroceria = null, tipoViaje = null, pasajeros = 1,
   } = filtros
 
   const sql = `
@@ -28,6 +28,8 @@ async function buscarViajes(filtros) {
            po.orden AS orden_subida,
            pd.orden AS orden_bajada,
            po.minutos_desde_salida,
+           pd.minutos_desde_salida AS minutos_llegada,
+           (pd.minutos_desde_salida - po.minutos_desde_salida) AS duracion_minutos,
            origen_c.nombre AS origen,
            destino_c.nombre AS destino,
            disponibles.asientos_libres,
@@ -85,12 +87,16 @@ async function buscarViajes(filtros) {
       AND ($7::text IS NULL OR
         b.marca_carroceria ILIKE '%' || $7 || '%')
       AND ($8::text IS NULL OR f.tipo_viaje = $8)
+      -- GC-14: solo viajes que todavía no salen de la parada de subida
+      AND (v.fecha::timestamp + f.hora_salida + make_interval(mins => po.minutos_desde_salida)) > LOCALTIMESTAMP
+      -- GC-14: solo viajes con asientos libres para todos los pasajeros buscados
+      AND disponibles.asientos_libres >= $9
     ORDER BY f.hora_salida, c.nombre, v.id
   `
 
   const parametros = [
     origen, destino, fecha, cooperativa,
-    tipoAsiento, marcaChasis, marcaCarroceria, tipoViaje,
+    tipoAsiento, marcaChasis, marcaCarroceria, tipoViaje, pasajeros,
   ]
 
   const { rows } = await pool.query(sql, parametros)

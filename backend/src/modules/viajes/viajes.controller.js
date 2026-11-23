@@ -48,6 +48,14 @@ async function buscar(req, res) {
     marcaChasis: q.marcaChasis || null,
     marcaCarroceria: q.marcaCarroceria || null,
     tipoViaje: q.tipoViaje || null,
+    pasajeros: q.pasajeros === undefined || q.pasajeros === '' ? 1 : Number(q.pasajeros),
+  }
+
+  // GC-14: de 1 a 10 pasajeros por compra
+  if (!Number.isInteger(filtros.pasajeros) || filtros.pasajeros < 1 || filtros.pasajeros > 10) {
+    const error = new Error('Puedes buscar pasajes para 1 a 10 pasajeros por compra')
+    error.status = 400
+    throw error
   }
 
   if (filtros.origen === filtros.destino) {
