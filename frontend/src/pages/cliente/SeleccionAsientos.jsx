@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import api from '../../services/api.js'
 import { useAuth } from '../../context/AuthContext.jsx'
-import { dinero } from './formatos.js'
+import { dinero, duracion, fechaLarga, horaEnParada } from './formatos.js'
 import './Viajes.css'
 
 // Agrupa los asientos de un piso en filas de 4 (2 + pasillo + 2), como en el bus
@@ -31,6 +31,8 @@ function SeleccionAsientos() {
   const [aviso, setAviso] = useState('')
   const [cargando, setCargando] = useState(true)
   const [pisoElegido, setPisoElegido] = useState(null)
+  // GC-14: datos del viaje para mostrar el resumen de la compra
+  const [viaje, setViaje] = useState(null)
 
   useEffect(() => {
     let activo = true
@@ -38,6 +40,9 @@ function SeleccionAsientos() {
       .then(({ data }) => { if (activo) setAsientos(Array.isArray(data) ? data : []) })
       .catch((fallo) => { if (activo) setError(fallo.response?.data?.mensaje || 'No pudimos cargar los asientos.') })
       .finally(() => { if (activo) setCargando(false) })
+    api.get(`/viajes/${id}`, { params: { subida, bajada } })
+      .then(({ data }) => { if (activo) setViaje(data) })
+      .catch(() => {})
     return () => { activo = false }
   }, [id, subida, bajada])
 
@@ -61,6 +66,16 @@ function SeleccionAsientos() {
   const total = elegidos.reduce((suma, asiento) => suma + asiento.precio, 0)
   const libres = asientos.filter((a) => a.disponible).length
 
+  // GC-14: total agrupado por tipo de asiento ("2 × Normal $9.00")
+  const porTipo = Object.values(elegidos.reduce((grupos, a) => {
+    const g = grupos[a.tipo_asiento] || { tipo: a.tipo_asiento, cantidad: 0, subtotal: 0 }
+    g.cantidad += 1
+    g.subtotal += a.precio
+    return { ...grupos, [a.tipo_asiento]: g }
+  }, {}))
+  const paradaSubida = viaje?.paradas?.find((p) => p.orden === viaje.orden_subida)
+  const paradaBajada = viaje?.paradas?.find((p) => p.orden === viaje.orden_bajada)
+
   // Guarda la selección (sobrevive al inicio de sesión) y va a la compra
   function continuarCompra() {
     sessionStorage.setItem('compraPendiente', JSON.stringify({
@@ -77,12 +92,32 @@ function SeleccionAsientos() {
 
   return (
     <section className="viajes">
-      <Link to={`/viajes/${id}?subida=${subida}&bajada=${bajada}&pasajeros=${pasajeros}`} className="viajes__volver">
-        ← Volver al detalle del viaje
-      </Link>
-      <h1>Elige tus asientos</h1>
+      <button type="button" className="viajes__boton viajes__boton--claro" style={{ marginBottom: '1rem' }} onClick={() => navigate(-1)}>
+        ← Volver a los resultados
+      </button>
+
+      {/* GC-14: resumen del viaje que se está comprando */}
+      {viaje && (
+        <div className="resumen-viaje" style={viaje.cooperativa_color ? { '--coop': viaje.cooperativa_color } : undefined}>
+          <div>
+            <span className="resumen-viaje__etiqueta">Tu viaje</span>
+            <h1>{viaje.origen} → {viaje.destino}</h1>
+            <p>
+              {fechaLarga(viaje.fecha)} · sale {horaEnParada(viaje.hora_salida, paradaSubida?.minutos_desde_salida)}
+              {paradaBajada && ` · llega ${horaEnParada(viaje.hora_salida, paradaBajada.minutos_desde_salida)}`}
+              {paradaSubida && paradaBajada && ` (${duracion(paradaBajada.minutos_desde_salida - paradaSubida.minutos_desde_salida)})`}
+            </p>
+          </div>
+          <div className="resumen-viaje__bus">
+            <strong>{viaje.cooperativa}</strong>
+            <span>Bus {viaje.numero_disco} · {viaje.placa}</span>
+          </div>
+        </div>
+      )}
+
+      <h2 className="viajes__titulo-seccion">Elige {pasajeros} {pasajeros === 1 ? 'asiento' : 'asientos'}</h2>
       <p className="viajes__sub">
-        Selecciona {pasajeros} {pasajeros === 1 ? 'asiento' : 'asientos'} en el mapa. La disponibilidad corresponde a tu tramo.
+        La disponibilidad corresponde a tu tramo. Pasa el cursor sobre un asiento para ver su tipo y precio.
       </p>
 
       {cargando && <div className="viajes__cargando"><span className="viajes__giro" /> Consultando disponibilidad…</div>}
@@ -147,7 +182,13 @@ function SeleccionAsientos() {
 
           <aside className="lateral">
             <div className="viajes__tarjeta">
-              <h2>Tu selección</h2>
+              <h2>Detalle de tu compra</h2>
+              {viaje && (
+                <>
+                  <div className="lateral__fila"><span>Tramo</span><strong>{viaje.origen} → {viaje.destino}</strong></div>
+                  <div className="lateral__fila"><span>Salida</span><strong>{horaEnParada(viaje.hora_salida, paradaSubida?.minutos_desde_salida)}</strong></div>
+                </>
+              )}
               <div className="lateral__fila" style={{ borderBottom: 0 }}>
                 <span>Asientos elegidos</span><strong>{seleccionados.length} de {pasajeros}</strong>
               </div>
@@ -168,6 +209,9 @@ function SeleccionAsientos() {
 
               {aviso && <p className="viajes__error" role="status">{aviso}</p>}
 
+              {porTipo.map((g) => (
+                <div key={g.tipo} className="lateral__fila"><span>{g.cantidad} × {g.tipo}</span><strong>{dinero(g.subtotal)}</strong></div>
+              ))}
               <div className="lateral__total"><span>Total estimado</span><strong>{dinero(total)}</strong></div>
               <p style={{ color: 'var(--v-suave)', fontSize: '.8rem', margin: '.4rem 0 1rem' }}>
                 Los descuentos de ley se aplican en el siguiente paso.
