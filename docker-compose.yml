@@ -10,6 +10,7 @@
 #   Frontend  http://localhost:5173
 #   Backend   http://localhost:3000/api
 #   pgAdmin   http://localhost:5050   (admin@admin.com / admin)
+#   MailHog   http://localhost:8025   (bandeja donde llegan TODOS los correos de prueba, GC-12)
 #   Postgres  localhost:5433          (postgres / postgres)  <- 5433 para no chocar con el Postgres instalado
 # =====================================================================
 name: pasajes-ecuador
@@ -44,6 +45,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      mailhog:
+        condition: service_started
     environment:
       PORT: 3000
       FRONTEND_URL: http://localhost:5173
@@ -54,6 +57,10 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:-postgres}
       JWT_SECRET: ${JWT_SECRET:-clave_de_desarrollo_cambiala_en_el_archivo_env}
       TZ: America/Guayaquil
+      # GC-12: los correos (verificación y recuperación) se envían a MailHog
+      SMTP_HOST: mailhog
+      SMTP_PORT: 1025
+      SMTP_FROM: no-responder@pasajes.ec
     ports:
       - "3000:3000"
     volumes:
@@ -78,6 +85,16 @@ services:
       # node_modules queda dentro del contenedor (no se mezcla con el de Windows)
       - /app/node_modules
     command: ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+
+  # GC-12: servidor de correo FALSO para desarrollo. Atrapa los correos que envía
+  # el backend (ninguno sale a internet) y los muestra en http://localhost:8025
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    platform: linux/amd64
+    restart: unless-stopped
+    ports:
+      - "1025:1025"   # SMTP: aquí envía el backend
+      - "8025:8025"   # Bandeja web para ver los correos
 
   pgadmin:
     image: dpage/pgadmin4
