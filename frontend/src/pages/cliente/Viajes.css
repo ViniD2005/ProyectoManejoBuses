@@ -317,3 +317,59 @@ ol.etapas { list-style: none; padding: 0; }
   .trayecto__punto strong { font-size: 1.2rem; }
   .viajes__tarjeta { padding: 1.15rem; }
 }
+
+/* =====================================================================
+   GC-14 - Resultados: buscador visible, más filtros y tarjetas expandibles
+   ===================================================================== */
+.barra-resultados { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; margin-bottom: 1rem; color: var(--v-suave); font-size: .92rem; }
+.barra-resultados strong { color: var(--v-texto); font-size: 1rem; }
+.barra-resultados span { text-transform: none; }
+.barra-resultados__acciones { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; }
+.barra-resultados__orden { display: flex; align-items: center; gap: .5rem; font-weight: 650; }
+.barra-resultados__orden select { min-height: 42px; padding: .4rem 2rem .4rem .75rem; border: 1.5px solid var(--v-borde); border-radius: 10px; background: var(--v-superficie); font: inherit; font-weight: 650; color: var(--v-texto); }
+.viajes__boton--activo { border-color: var(--v-marca); color: var(--v-marca); }
+.filtros--horizontal { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); align-items: end; margin-bottom: 1.25rem; position: static; }
+.filtros--horizontal .filtros__acciones { display: flex; gap: .5rem; }
+
+.viaje--resultado { grid-template-columns: 1fr; }
+@media (min-width: 760px) { .viaje--resultado { grid-template-columns: 1fr auto; } }
+.viaje__principal { display: grid; gap: .9rem; min-width: 0; }
+.viaje__horas { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 1rem; }
+.viaje__horas strong { display: block; font-size: 2rem; font-weight: 800; letter-spacing: -.03em; line-height: 1; }
+.viaje__horas span { display: block; margin-top: .3rem; font-size: 1.05rem; font-weight: 750; color: var(--v-texto); }
+.viaje__llegada { text-align: right; }
+.viaje__trayecto { display: grid; gap: .35rem; text-align: center; color: var(--v-suave); font-size: .78rem; font-weight: 700; }
+.viaje__trayecto .trayecto__linea { display: block; margin: 0 .4rem; }
+.viaje__secundario { display: flex; flex-wrap: wrap; align-items: center; gap: .45rem; color: var(--v-suave); font-size: .85rem; font-weight: 650; }
+.viaje__logo--pequeno { width: 28px; height: 28px; border-radius: 8px; font-size: .72rem; }
+.viaje__acciones { display: grid; gap: .5rem; align-content: center; text-align: right; padding-top: 1rem; border-top: 1px dashed var(--v-borde); }
+@media (min-width: 760px) { .viaje__acciones { min-width: 210px; padding: 0 0 0 1.35rem; border-top: 0; border-left: 1px dashed var(--v-borde); } }
+.viaje__acciones small { color: var(--v-suave); font-weight: 650; }
+.viaje--abierto { border-color: color-mix(in srgb, var(--coop, var(--v-marca)) 40%, white); }
+.viaje--abierto:hover { transform: none; }
+.viaje__detalle {
+  grid-column: 1 / -1; display: grid; gap: 1.25rem; padding-top: 1.25rem; border-top: 1px solid var(--v-borde);
+  grid-template-columns: 1fr; animation: viajes-aparecer .2s ease-out;
+}
+@media (min-width: 900px) { .viaje__detalle { grid-template-columns: 260px 1fr 1fr; } }
+.viaje__detalle h3 { margin: 0 0 .75rem; font-size: 1rem; }
+.viaje__detalle .datos { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.viaje__foto { border-radius: 14px; overflow: hidden; background: var(--v-superficie-2); border: 1px solid var(--v-borde); min-height: 170px; }
+.viaje__foto img { width: 100%; height: 100%; min-height: 170px; object-fit: cover; }
+.viaje__foto-vacia { display: grid; place-items: center; align-content: center; gap: .5rem; height: 100%; min-height: 170px; color: var(--v-tenue); font-weight: 650; font-size: .85rem; }
+.viaje__resolucion { margin: .75rem 0 0; color: var(--v-suave); font-size: .82rem; }
+@keyframes viajes-aparecer { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+@media (max-width: 520px) { .viaje__horas strong { font-size: 1.5rem; } .viaje__horas span { font-size: .92rem; } }
+
+/* GC-14 - Resumen del viaje en la selección de asientos */
+.resumen-viaje {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.15rem 1.35rem; margin-bottom: 1.5rem;
+  border-radius: var(--v-radio); color: #fff; background: linear-gradient(135deg, color-mix(in srgb, var(--coop, var(--v-marca)) 80%, black), var(--coop, var(--v-marca)));
+}
+.resumen-viaje h1 { color: #fff; margin: .15rem 0 .25rem; font-size: clamp(1.35rem, 3vw, 1.9rem); }
+.resumen-viaje p { margin: 0; color: rgba(255, 255, 255, .85); font-weight: 600; }
+.resumen-viaje__etiqueta { font-size: .72rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; opacity: .8; }
+.resumen-viaje__bus { text-align: right; }
+.resumen-viaje__bus strong { display: block; }
+.resumen-viaje__bus span { font-size: .88rem; opacity: .85; }
+.viajes__titulo-seccion { margin: 0 0 .25rem; font-size: 1.25rem; }
