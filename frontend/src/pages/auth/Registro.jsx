@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { mensajeDeError } from '../../services/api.js'
 import Icono from '../../components/Icono.jsx'
 import ArteAcceso from './ArteAcceso.jsx'
+import { TarjetaCorreo, BotonReenviar, AccesoMailHog } from './PiezasCorreo.jsx'
 import {
   errorCedula, errorNombres, errorCorreo, errorTelefono, errorFechaNacimiento,
   errorContrasena, requisitosContrasena,
@@ -29,8 +30,8 @@ function validar(form) {
 
 function Registro() {
   const { registrarse } = useAuth()
-  const navigate = useNavigate()
   const [form, setForm] = useState(VACIO)
+  const [registrado, setRegistrado] = useState(null)
   const [tocados, setTocados] = useState({})
   const [erroresServidor, setErroresServidor] = useState({})
   const [error, setError] = useState('')
@@ -60,8 +61,9 @@ function Registro() {
     try {
       const datos = { ...form }
       delete datos.confirmar
-      await registrarse(datos)
-      navigate('/', { replace: true })
+      // GC-12: se muestra "revisa tu correo" en lugar de entrar directo
+      setRegistrado(await registrarse(datos))
+      window.scrollTo(0, 0)
     } catch (err) {
       setError(mensajeDeError(err))
       setErroresServidor(err.response?.data?.detalles || {})
@@ -80,6 +82,33 @@ function Registro() {
         : ayuda && <span className="campo__ayuda">{ayuda}</span>}
     </div>
   )
+
+  if (registrado) {
+    return (
+      <TarjetaCorreo icono="correo" insignia="1" titulo="¡Ya casi! Confirma tu correo"
+        pie={<>¿Escribiste mal el correo? <button type="button" className="btn-enlace" onClick={() => setRegistrado(null)}>Corrige tus datos</button></>}>
+        <p className="correo-tarjeta__texto">
+          Hola, <strong>{form.nombres.trim().split(/\s+/)[0]}</strong>. Creamos tu cuenta y te enviamos un enlace para activarla a:
+        </p>
+        <div className="correo-tarjeta__email">{registrado.email}</div>
+        {!registrado.correo_enviado && (
+          <div className="alerta alerta--aviso" style={{ textAlign: 'left', marginTop: '1rem' }}>
+            No pudimos enviar el correo en este momento. Presiona «Reenviar el correo» en un minuto.
+          </div>
+        )}
+        <ol className="correo-pasos">
+          <li>Abre el correo «Confirma tu correo para activar tu cuenta». Si no aparece, revisa la carpeta de spam.</li>
+          <li>Presiona «Confirmar mi correo». El enlace dura 24 horas.</li>
+          <li>Inicia sesión y compra tu primer pasaje.</li>
+        </ol>
+        <div className="correo-acciones">
+          <BotonReenviar ruta="/auth/reenviar-verificacion" email={registrado.email} />
+          <Link to="/login" state={{ email: registrado.email }} className="btn btn--fantasma btn--bloque">Ya lo confirmé, iniciar sesión</Link>
+        </div>
+        <AccesoMailHog />
+      </TarjetaCorreo>
+    )
+  }
 
   const requisitos = requisitosContrasena(form.password)
   const nivel = form.password ? requisitos.filter((r) => r.cumple).length : 0
