@@ -4,6 +4,7 @@ import api from '../../services/api.js'
 import IconoBus from './IconoBus.jsx'
 import { dinero, fechaLarga, horaEnParada } from './formatos.js'
 import './Viajes.css'
+import './Compra.css'
 
 const NOMBRE_ESTADO = {
   pendiente: 'Pendiente de pago',
@@ -94,6 +95,27 @@ async function descargarBoleto(codigo, alFallar) {
   } catch (err) {
     // La respuesta de error también llega como blob: se lee para mostrar el mensaje
     let mensaje = 'No pudimos descargar el boleto. Inténtalo de nuevo.'
+    try {
+      mensaje = JSON.parse(await err.response.data.text()).mensaje || mensaje
+    } catch {
+      // se mantiene el mensaje genérico
+    }
+    alFallar(mensaje)
+  }
+}
+
+// GC-15: todos los boletos de una compra en un solo PDF (una página por pasajero)
+async function descargarTodos(compraId, alFallar) {
+  try {
+    const { data } = await api.get(`/boletos/compra/${compraId}/pdf`, { responseType: 'blob' })
+    const url = URL.createObjectURL(data)
+    const enlace = document.createElement('a')
+    enlace.href = url
+    enlace.download = `boletos-compra-${compraId}.pdf`
+    enlace.click()
+    setTimeout(() => URL.revokeObjectURL(url), 60000)
+  } catch (err) {
+    let mensaje = 'No pudimos descargar los boletos. Inténtalo de nuevo.'
     try {
       mensaje = JSON.parse(await err.response.data.text()).mensaje || mensaje
     } catch {
@@ -199,6 +221,15 @@ function MisBoletos() {
               <span>Compra N.º {compra.id} · {compra.metodo_pago}</span>
               <span>Total <strong style={{ color: 'var(--v-texto)', fontSize: '1.05rem' }}>{dinero(compra.total)}</strong></span>
             </div>
+
+            {compra.boletos.some((b) => b.estado === 'emitido' || b.estado === 'usado') && (
+              <div className="descargar-todos">
+                <span>✓ Tus boletos están listos. Cada pasajero presenta su propio código QR al abordar.</span>
+                <button type="button" className="viajes__boton" onClick={() => descargarTodos(compra.id, setError)}>
+                  Descargar {compra.boletos.length > 1 ? `los ${compra.boletos.length} boletos` : 'el boleto'}
+                </button>
+              </div>
+            )}
 
             {compra.estado_pago === 'pendiente' && compra.requiere_comprobante && (
               <FormularioComprobante compraId={compra.id} total={compra.total} alSubir={comprobanteSubido} />
