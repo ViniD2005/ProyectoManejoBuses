@@ -44,7 +44,7 @@ const MENU = {
     ] },
     { grupo: 'Mi cooperativa', enlaces: [
       { a: '/cooperativa/personal', texto: 'Personal', icono: 'usuarios' },
-      { a: '/cooperativa/apariencia', texto: 'Apariencia', icono: 'paleta' },
+      { a: '/cooperativa/apariencia', texto: 'Datos y apariencia', icono: 'edificio' },
     ] },
   ],
   oficinista: [
@@ -110,6 +110,23 @@ function MainLayout() {
 
   const menu = usuario ? MENU[usuario.rol] : null
 
+  /*
+    GC-16: el personal de una cooperativa trabaja con la identidad de SU
+    cooperativa: su logo (o sus iniciales) y su nombre reemplazan a la marca
+    general en el menú. El enlace lleva a su panel de inicio.
+  */
+  const esCooperativa = Boolean(cooperativa && usuario?.cooperativa_id)
+  const inicialesCooperativa = (cooperativa?.nombre || '')
+    .replace(/^cooperativa\s+(de\s+)?/i, '').split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]).join('').toUpperCase()
+  const marcaCooperativa = esCooperativa && (
+    <Link to="/panel" className="marca marca--cooperativa" title={cooperativa.nombre}>
+      {cooperativa.logo_url
+        ? <img src={cooperativa.logo_url} alt="" className="marca__logo" style={{ background: '#fff', borderRadius: 8, padding: 2 }} />
+        : <span className="marca__icono" style={{ fontWeight: 800, fontSize: '.85rem' }}>{inicialesCooperativa || <Icono nombre="edificio" tam={18} />}</span>}
+      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cooperativa.nombre}</span>
+    </Link>
+  )
+
   // ── Panel del personal ──────────────────────────────────────────────
   if (menu) {
     const actual = menu.flatMap((g) => g.enlaces).find((e) => location.pathname.startsWith(e.a))
@@ -117,21 +134,18 @@ function MainLayout() {
       <div className="app">
         <aside className={`app__lateral ${menuAbierto ? 'abierto' : ''}`} aria-label="Menú principal">
           <div className="app__lateral-cabecera">
-            {marca}
+            {marcaCooperativa || marca}
             <button type="button" className="btn btn--fantasma btn--icono solo-movil" style={{ color: '#fff' }}
               onClick={() => setMenuAbierto(false)} aria-label="Cerrar menú">
               <Icono nombre="cerrar" />
             </button>
           </div>
 
-          {cooperativa && usuario.cooperativa_id && (
+          {esCooperativa && (
             <div className="app__cooperativa">
-              {cooperativa.logo_url
-                ? <img src={cooperativa.logo_url} alt="" />
-                : <span className="marca__icono"><Icono nombre="edificio" tam={18} /></span>}
               <div>
-                <strong>{cooperativa.nombre}</strong>
-                <span>{cooperativa.eslogan || NOMBRE_ROL[usuario.rol]}</span>
+                <strong>{cooperativa.eslogan || NOMBRE_ROL[usuario.rol]}</strong>
+                <span>Vende con {configuracion.nombre_app}</span>
               </div>
             </div>
           )}
