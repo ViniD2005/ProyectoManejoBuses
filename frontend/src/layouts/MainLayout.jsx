@@ -28,6 +28,11 @@ const MENU = {
       { a: '/admin/usuarios', texto: 'Usuarios y roles', icono: 'usuarios' },
       { a: '/admin/configuracion', texto: 'Configuración', icono: 'ajustes' },
     ] },
+    // GC-13: catálogos que usan todas las cooperativas
+    { grupo: 'Catálogos', enlaces: [
+      { a: '/admin/ubicaciones', texto: 'Provincias y cantones', icono: 'ubicacion' },
+      { a: '/admin/marcas', texto: 'Marcas de buses', icono: 'bus' },
+    ] },
   ],
   cooperativa: [
     // GC-9: panel de inicio

@@ -1,6 +1,7 @@
 
 import { useEffect, useState } from 'react'
 import api from '../../services/api.js'
+import ComboBuscador from '../../components/ComboBuscador.jsx'
 
 const FORM_VACIO = {
   ciudad_origen_id: '',
@@ -45,8 +46,11 @@ function Frecuencias() {
       .catch((err) => setError(mensajeDeError(err)))
   }, [])
 
+  // GC-13: se muestra como "Provincia - Cantón"
   const nombreCiudad = (id) =>
-    ciudades.find((c) => String(c.id) === String(id))?.nombre || '—'
+    ciudades.find((c) => String(c.id) === String(id))?.etiqueta || '—'
+
+  const opcionesCiudad = ciudades.map((c) => ({ valor: String(c.id), etiqueta: c.etiqueta || `${c.provincia} - ${c.nombre}` }))
 
   const cambiar = (e) =>
     setForm({ ...form, [e.target.name]: e.target.value })
@@ -143,21 +147,16 @@ function Frecuencias() {
     }
   }
 
+  // GC-13: lista de cantones con buscador (escribe "baños" y aparece Tungurahua - Baños)
   const selectorCiudad = (name, valor, onChange) => (
-    <select
+    <ComboBuscador
       id={name}
-      name={name}
-      className="form-control"
-      value={valor}
-      onChange={onChange}
-    >
-      <option value="">Elige una ciudad</option>
-      {ciudades.map((c) => (
-        <option key={c.id} value={c.id}>
-          {c.nombre}
-        </option>
-      ))}
-    </select>
+      opciones={opcionesCiudad}
+      valor={valor}
+      invalido={Boolean(errores[name])}
+      placeholder="Busca provincia o cantón"
+      alCambiar={(nuevo) => onChange({ target: { name, value: nuevo } })}
+    />
   )
 
   const mensajeCampo = (campo) =>
@@ -189,7 +188,7 @@ function Frecuencias() {
               className="form-label"
               htmlFor="ciudad_origen_id"
             >
-              Ciudad de origen
+              Origen (provincia - cantón)
             </label>
 
             {selectorCiudad(
@@ -206,7 +205,7 @@ function Frecuencias() {
               className="form-label"
               htmlFor="ciudad_destino_id"
             >
-              Ciudad de destino
+              Destino (provincia - cantón)
             </label>
 
             {selectorCiudad(
@@ -337,7 +336,7 @@ function Frecuencias() {
               className="form-label"
               htmlFor="ciudad_id"
             >
-              Ciudad de la parada
+              Parada (provincia - cantón)
             </label>
 
             {selectorCiudad(

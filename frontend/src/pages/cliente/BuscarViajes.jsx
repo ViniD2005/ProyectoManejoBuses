@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../../services/api.js'
+import ComboBuscador from '../../components/ComboBuscador.jsx'
 import { hoyEcuador, sumarDias } from './formatos.js'
 import './Viajes.css'
 
@@ -56,36 +57,34 @@ function BuscarViajes({ enInicio = false, inicial = null, alBuscar = null }) {
     navegar(`/viajes/resultados?${parametros.toString()}`)
   }
 
-  const opciones = ciudades.map((ciudad) => (
-    <option key={ciudad.id} value={ciudad.id}>
-      {ciudad.nombre}{ciudad.provincia ? ` (${ciudad.provincia})` : ''}
-    </option>
-  ))
+  // GC-13: cantones como "Provincia - Cantón", con buscador
+  const opciones = ciudades.map((ciudad) => ({
+    valor: String(ciudad.id),
+    etiqueta: ciudad.etiqueta || `${ciudad.provincia} - ${ciudad.nombre}`,
+  }))
 
   const formulario = (
     <form className="buscador" onSubmit={buscar} noValidate>
       {error && <p role="alert" className="viajes__error">{error}</p>}
       <div className="buscador__fila">
-        <label className={`viajes__campo ${errores.origen ? 'viajes__campo--error' : ''}`}>
-          <span>Origen</span>
-          <select disabled={cargando} value={busqueda.origen} onChange={(e) => cambiar('origen', e.target.value)}>
-            <option value="">{cargando ? 'Cargando ciudades…' : '¿Desde dónde?'}</option>
-            {opciones}
-          </select>
+        <div className={`viajes__campo ${errores.origen ? 'viajes__campo--error' : ''}`}>
+          <label htmlFor="buscar-origen" className="viajes__etiqueta">Origen</label>
+          <ComboBuscador id="buscar-origen" opciones={opciones} valor={busqueda.origen} deshabilitado={cargando}
+            invalido={Boolean(errores.origen)} placeholder={cargando ? 'Cargando cantones…' : '¿Desde dónde?'}
+            alCambiar={(valor) => cambiar('origen', valor)} />
           {errores.origen && <small className="viajes__error-campo">{errores.origen}</small>}
-        </label>
+        </div>
 
         <button type="button" className="buscador__cambiar" onClick={intercambiar}
           aria-label="Intercambiar origen y destino" title="Intercambiar origen y destino">⇄</button>
 
-        <label className={`viajes__campo ${errores.destino ? 'viajes__campo--error' : ''}`}>
-          <span>Destino</span>
-          <select disabled={cargando} value={busqueda.destino} onChange={(e) => cambiar('destino', e.target.value)}>
-            <option value="">{cargando ? 'Cargando ciudades…' : '¿A dónde vas?'}</option>
-            {opciones}
-          </select>
+        <div className={`viajes__campo ${errores.destino ? 'viajes__campo--error' : ''}`}>
+          <label htmlFor="buscar-destino" className="viajes__etiqueta">Destino</label>
+          <ComboBuscador id="buscar-destino" opciones={opciones} valor={busqueda.destino} deshabilitado={cargando}
+            invalido={Boolean(errores.destino)} placeholder={cargando ? 'Cargando cantones…' : '¿A dónde vas?'}
+            alCambiar={(valor) => cambiar('destino', valor)} />
           {errores.destino && <small className="viajes__error-campo">{errores.destino}</small>}
-        </label>
+        </div>
 
         <label className={`viajes__campo ${errores.fecha ? 'viajes__campo--error' : ''}`}>
           <span>Fecha de viaje</span>
