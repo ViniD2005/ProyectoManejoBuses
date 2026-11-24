@@ -38,7 +38,7 @@ const ACCESOS = {
     { a: '/buses', texto: 'Buses', detalle: 'Flota y mapa de asientos', icono: 'bus' },
     { a: '/frecuencias', texto: 'Frecuencias', detalle: 'Rutas, horarios y precios', icono: 'reloj' },
     { a: '/cooperativa/personal', texto: 'Personal', detalle: 'Oficinistas y choferes', icono: 'usuarios' },
-    { a: '/cooperativa/apariencia', texto: 'Apariencia', detalle: 'Logo, colores y eslogan', icono: 'paleta' },
+    { a: '/cooperativa/apariencia', texto: 'Mi cooperativa', detalle: 'Datos de contacto, logo y colores', icono: 'edificio' },
   ],
   oficinista: [
     { a: '/oficinista/vender', texto: 'Vender boletos', detalle: 'Venta en ventanilla, pago en efectivo', icono: 'boleto' },
@@ -188,6 +188,34 @@ export default function PanelInicio() {
               ))}
             </div>
           </section>
+
+          {/* GC-16: datos de contacto de la cooperativa, visibles para todo su personal */}
+          {datos?.cooperativa && (
+            <section className="card" style={{ marginBottom: 0 }}>
+              <div className="card-header fila fila--entre">
+                <span>Datos de contacto</span>
+                {rol === 'cooperativa' && <Link to="/cooperativa/apariencia" className="btn btn-sm"><Icono nombre="editar" tam={16} /> Editar</Link>}
+              </div>
+              <div className="card-body" style={{ display: 'grid', gap: '.7rem' }}>
+                {datos.cooperativa.descripcion && <p className="texto-suave" style={{ margin: 0, fontSize: '.9rem' }}>{datos.cooperativa.descripcion}</p>}
+                {[
+                  ['ubicacion', 'Matriz', datos.cooperativa.direccion],
+                  ['telefono', 'Teléfono', datos.cooperativa.telefono],
+                  ['correo', 'Correo', datos.cooperativa.email],
+                  ['telefono', 'WhatsApp', datos.cooperativa.whatsapp],
+                  ['documento', 'RUC', datos.cooperativa.ruc],
+                ].filter(([, , dato]) => dato).map(([icono, texto, dato]) => (
+                  <div key={texto} className="fila" style={{ flexWrap: 'nowrap', gap: '.6rem', alignItems: 'flex-start' }}>
+                    <span className="texto-suave" style={{ marginTop: 2 }}><Icono nombre={icono} tam={18} /></span>
+                    <span style={{ minWidth: 0 }}>
+                      <span className="texto-suave" style={{ display: 'block', fontSize: '.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em' }}>{texto}</span>
+                      <span style={{ overflowWrap: 'anywhere' }}>{dato}</span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
 
           {rol === 'cooperativa' && datos && (
             <section className="card" style={{ marginBottom: 0 }}>
