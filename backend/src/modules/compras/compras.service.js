@@ -1,7 +1,7 @@
 const fs = require('fs')
 const { pool, transaccion } = require('../../config/db')
 const { notificar, notificarOficinistas } = require('../../utils/notificar')
-const { validarCedulaEcuador, validarNombreCompleto, limpiar } = require('../../utils/validaciones')
+const { validarCedulaEcuador, validarNombreCompleto, validarFechaNacimiento, limpiar } = require('../../utils/validaciones')
 
 function errorHttp(mensaje, status, detalles) {
   const error = new Error(mensaje)
@@ -56,16 +56,17 @@ async function crear(clienteId, datos, opciones = {}) {
     throw errorHttp('No puedes elegir el mismo asiento dos veces', 400)
   }
   const errores = {}
-  // CC-21: cédula y nombre de cada pasajero, sin cédulas repetidas en la misma compra
-  const cedulasVistas = new Set()
+  // CC-21: cédula y nombre de cada pasajero.
+  // GC-15: SÍ se permite repetir la cédula (una persona puede comprar dos asientos para ella,
+  // o uno para ella y otro para su mascota, siempre que pague cada pasaje).
   pasajeros.forEach((p, i) => {
     const clave = `pasajero_${i + 1}`
     const errorCedula = validarCedulaEcuador(p.cedula)
     const errorNombre = validarNombreCompleto(p.nombre)
+    const errorNacimiento = p.fecha_nacimiento ? validarFechaNacimiento(p.fecha_nacimiento) : null
     if (errorCedula) errores[clave] = `Pasajero ${i + 1}: ${errorCedula.charAt(0).toLowerCase()}${errorCedula.slice(1)}`
-    else if (cedulasVistas.has(String(p.cedula).trim())) errores[clave] = `Pasajero ${i + 1}: esta cédula ya está en otro asiento de la misma compra`
     else if (errorNombre) errores[clave] = `Pasajero ${i + 1}: ${errorNombre.charAt(0).toLowerCase()}${errorNombre.slice(1)}`
-    cedulasVistas.add(String(p.cedula ?? '').trim())
+    else if (errorNacimiento) errores[clave] = `Pasajero ${i + 1}: ${errorNacimiento.charAt(0).toLowerCase()}${errorNacimiento.slice(1)}`
   })
   if (Object.keys(errores).length) throw errorHttp('Revisa los datos de los pasajeros', 400, errores)
 
@@ -123,9 +124,10 @@ async function crear(clienteId, datos, opciones = {}) {
             'SELECT fecha_nacimiento::text AS fecha_nacimiento FROM usuario WHERE cedula = $1',
             [p.cedula]
           )
-          const nacimiento = registro.rows[0]?.fecha_nacimiento
+          // GC-15: si el pasajero no tiene cuenta, se usa la fecha de nacimiento que ingresó el comprador
+          const nacimiento = registro.rows[0]?.fecha_nacimiento || p.fecha_nacimiento
           if (!nacimiento) {
-            throw errorHttp(`Para aplicar el descuento "${tipo.nombre}", el pasajero con cédula ${p.cedula} debe tener una cuenta registrada con su fecha de nacimiento`, 400)
+            throw errorHttp(`Para aplicar el descuento "${tipo.nombre}" ingresa la fecha de nacimiento del pasajero con cédula ${p.cedula}`, 400)
           }
           const edad = edadEn(nacimiento, viaje.fecha)
           if (tipo.codigo === 'tercera_edad' && edad < 65) {
@@ -305,4 +307,21 @@ async function venderEnVentanilla(oficinista, datos) {
   return crear(clienteId, { ...datos, metodo_pago_id: efectivo.rows[0].id }, { vendidoPor: oficinista })
 }
 
-module.exports = { obtenerCatalogos, crear, listarMias, subirComprobante, venderEnVentanilla }
+/*
+  GC-15: datos de un pasajero ya registrado, para precargarlos en la compra.
+  Solo se devuelve el nombre (nunca correo ni teléfono) y si tiene fecha de nacimiento
+  registrada (para saber si hace falta pedirla en los descuentos por edad).
+*/
+async function buscarPasajero(cedula) {
+  const error = validarCedulaEcuador(cedula)
+  if (error) throw errorHttp(error, 400)
+  const { rows } = await pool.query(
+    `SELECT nombres || ' ' || apellidos AS nombre, (fecha_nacimiento IS NOT NULL) AS tiene_fecha_nacimiento
+       FROM usuario WHERE cedula = $1 AND activo`,
+    [String(cedula).trim()]
+  )
+  return rows[0] ? { registrado: true, ...rows[0] } : { registrado: false }
+}
+
+module.exports = {
+  buscarPasajero, obtenerCatalogos, crear, listarMias, subirComprobante, venderEnVentanilla }

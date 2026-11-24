@@ -21,4 +21,9 @@ const venderEnVentanilla = async (req, res) => {
   res.status(201).json(await servicio.venderEnVentanilla(req.usuario, req.body))
 }
 
-module.exports = { catalogos, crear, listarMias, subirComprobante, venderEnVentanilla }
+// GC-15: precargar los datos de un pasajero registrado por su cédula
+const buscarPasajero = async (req, res) => {
+  res.json(await servicio.buscarPasajero(req.query.cedula))
+}
+
+module.exports = { catalogos, crear, listarMias, subirComprobante, venderEnVentanilla, buscarPasajero }
