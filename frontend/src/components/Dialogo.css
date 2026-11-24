@@ -1,0 +1,25 @@
+/* GC-16: ventana de confirmación propia (reemplaza confirm/prompt del navegador) */
+.dialogo { width: min(460px, calc(100% - 2rem)); overflow: hidden; }
+.dialogo__cuerpo { display: flex; gap: 1rem; padding: 1.5rem 1.5rem 1.25rem; }
+.dialogo__cuerpo h2 { margin: 0.1rem 0 0.35rem; font-size: 1.15rem; }
+.dialogo__cuerpo p { margin: 0; color: var(--texto-suave); line-height: 1.5; }
+.dialogo__icono {
+  flex: none; width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center;
+  background: var(--marca-suave); color: var(--marca);
+}
+.dialogo__icono--exito { background: color-mix(in srgb, var(--exito) 14%, transparent); color: var(--exito); }
+.dialogo__icono--peligro { background: color-mix(in srgb, var(--error) 13%, transparent); color: var(--error); }
+.dialogo__detalle {
+  margin-top: 0.9rem; padding: 0.75rem 0.9rem; border-radius: 10px; background: var(--fondo, #f5f7fa);
+  border: 1px solid var(--borde); font-size: 0.9rem; display: grid; gap: 0.25rem;
+}
+.dialogo__detalle strong { font-weight: 750; }
+.dialogo textarea { resize: vertical; min-height: 84px; }
+.dialogo__pie {
+  display: flex; justify-content: flex-end; gap: 0.6rem; padding: 0.9rem 1.5rem;
+  background: var(--fondo, #f5f7fa); border-top: 1px solid var(--borde);
+}
+@media (max-width: 480px) {
+  .dialogo__cuerpo { flex-direction: column; }
+  .dialogo__pie .btn { flex: 1; }
+}

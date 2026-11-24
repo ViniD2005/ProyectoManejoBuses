@@ -297,6 +297,9 @@ const asignarResponsable = async (id, usuarioId) => {
 module.exports = {
   validarDatosCooperativa,
   validarRuc,
+  // GC-16: el usuario cooperativa edita los datos de su propia cooperativa
+  erroresCooperativa,
+  revisarDuplicados,
   listarCooperativas,
   obtenerCooperativaPorId,
   listarParaGestion,

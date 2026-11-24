@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import api from '../../services/api.js'
+import { useDialogo } from '../../hooks/useDialogo.jsx'
 
 const COLORES = ['#e3f2fd', '#e8f5e9', '#fff3e0', '#f3e5f5', '#e0f7fa', '#fce4ec', '#f1f8e9', '#ede7f6']
 const NOMBRES_DIA = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
@@ -17,6 +18,7 @@ function encabezado(fecha) {
 
 // CC-13: hoja de ruta semanal (filas: buses, columnas: días) con rotación de turnos
 export default function HojaSemanal() {
+  const [dialogo, preguntar] = useDialogo()
   const [desde, setDesde] = useState(hoy)
   const [semana, setSemana] = useState(null)
   const [error, setError] = useState('')
@@ -37,7 +39,14 @@ export default function HojaSemanal() {
   }
 
   const generar = async () => {
-    if (!window.confirm(`¿Generar la hoja de ruta del ${desde} al ${semana?.hasta || ''} con rotación de turnos?`)) return
+    // GC-16: confirmación con la ventana del sistema
+    const ok = await preguntar({
+      titulo: '¿Generar la hoja de ruta de la semana?',
+      mensaje: 'Se crearán los viajes de cada día con rotación de turnos. Los clientes podrán comprar pasajes para esas salidas.',
+      detalle: <><span>Desde: <strong>{desde}</strong></span>{semana?.hasta && <span>Hasta: <strong>{semana.hasta}</strong></span>}</>,
+      textoConfirmar: 'Generar semana',
+    })
+    if (!ok) return
     setError('')
     setAviso('')
     try {
@@ -52,6 +61,7 @@ export default function HojaSemanal() {
 
   return (
     <div className="container" style={{ maxWidth: 'none' }}>
+      {dialogo}
       <h1 className="mb-2">Hoja de ruta semanal</h1>
       <p className="text-muted mb-3">
         Una fila por bus y una columna por día. Cada celda muestra las salidas del turno asignado, o <strong>P</strong> si

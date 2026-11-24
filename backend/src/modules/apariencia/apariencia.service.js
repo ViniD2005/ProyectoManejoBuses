@@ -1,5 +1,6 @@
 const fs = require('fs')
 const { pool } = require('../../config/db')
+const { erroresCooperativa, revisarDuplicados } = require('../cooperativas/cooperativas.service')
 
 function errorHttp(mensaje, status, detalles) {
   const error = new Error(mensaje)
@@ -11,7 +12,7 @@ function errorHttp(mensaje, status, detalles) {
 const COLOR = /^#[0-9a-fA-F]{6}$/
 const URL_WEB = /^https?:\/\/[^\s<>]+$/
 
-const CAMPOS = `id, nombre, telefono, email, direccion, logo_url, color_primario, color_acento,
+const CAMPOS = `id, nombre, ruc, telefono, email, direccion, logo_url, color_primario, color_acento,
                 eslogan, descripcion, facebook_url, instagram_url, whatsapp`
 
 async function obtener(cooperativaId) {
@@ -88,4 +89,26 @@ async function quitarLogo(cooperativaId) {
   return obtener(cooperativaId)
 }
 
-module.exports = { obtener, actualizar, actualizarLogo, quitarLogo }
+/*
+  GC-16: el usuario de la cooperativa actualiza los datos de SU cooperativa
+  (nombre, RUC, teléfono, correo y dirección) con las mismas reglas que usa el admin.
+*/
+async function actualizarDatos(cooperativaId, datos) {
+  await obtener(cooperativaId)
+  const errores = { ...erroresCooperativa(datos), ...(await revisarDuplicados(datos, cooperativaId)) }
+  if (Object.keys(errores).length) throw errorHttp('Revisa los datos marcados de tu cooperativa', 400, errores)
+  await pool.query(
+    `UPDATE cooperativa SET nombre = $1, ruc = $2, telefono = $3, email = LOWER($4), direccion = $5 WHERE id = $6`,
+    [
+      String(datos.nombre).trim().replace(/\s+/g, ' '),
+      String(datos.ruc).trim(),
+      String(datos.telefono).replace(/[\s-]/g, ''),
+      String(datos.email).trim(),
+      String(datos.direccion).trim().replace(/\s+/g, ' '),
+      cooperativaId,
+    ]
+  )
+  return obtener(cooperativaId)
+}
+
+module.exports = { obtener, actualizar, actualizarDatos, actualizarLogo, quitarLogo }

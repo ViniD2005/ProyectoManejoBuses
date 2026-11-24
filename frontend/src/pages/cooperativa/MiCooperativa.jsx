@@ -149,10 +149,13 @@ export default function MiCooperativa() {
       <div className="pagina-encabezado">
         <div>
           <span className="etiqueta-seccion">Mi cooperativa</span>
-          <h1>Apariencia de {cooperativa.nombre}</h1>
-          <p>Elige el logo, los colores y los textos con los que tus clientes y tu personal reconocen a tu cooperativa.</p>
+          <h1>{cooperativa.nombre}</h1>
+          <p>Mantén al día los datos de contacto y elige el logo, los colores y los textos con los que tus clientes y tu personal reconocen a tu cooperativa.</p>
         </div>
       </div>
+
+      {/* GC-16: datos de contacto (tiene su propio botón de guardar) */}
+      <DatosCooperativa cooperativa={cooperativa} alGuardar={(data) => { setCooperativa(data); aplicarTema(data) }} />
 
       {error && <div className="alerta alerta--error" role="alert">{error}</div>}
       {aviso && <div className="alerta alerta--exito" role="status">{aviso}</div>}
@@ -277,6 +280,94 @@ export default function MiCooperativa() {
         <VistaPrevia cooperativa={cooperativa} form={form} />
       </div>
     </div>
+  )
+}
+
+/*
+  GC-16: datos de la cooperativa que antes solo podía cambiar el administrador.
+  Mismas reglas que el registro: RUC de 13 dígitos, teléfono ecuatoriano,
+  correo válido y nombre/RUC sin repetir con otra cooperativa.
+*/
+const DATOS = ['nombre', 'ruc', 'telefono', 'email', 'direccion']
+const datosDe = (c) => Object.fromEntries(DATOS.map((k) => [k, c?.[k] || '']))
+
+function DatosCooperativa({ cooperativa, alGuardar }) {
+  const [form, setForm] = useState(() => datosDe(cooperativa))
+  const [errores, setErrores] = useState({})
+  const [mensaje, setMensaje] = useState(null)
+  const [guardando, setGuardando] = useState(false)
+  const original = datosDe(cooperativa)
+  const hayCambios = DATOS.some((k) => form[k] !== original[k])
+
+  const cambiar = (e) => {
+    let { name, value } = e.target
+    if (name === 'ruc') value = value.replace(/\D/g, '').slice(0, 13)
+    if (name === 'telefono') value = value.replace(/[^\d]/g, '').slice(0, 10)
+    setForm({ ...form, [name]: value })
+    setErrores({ ...errores, [name]: '' })
+    setMensaje(null)
+  }
+
+  // Revisión rápida en el navegador; el servidor vuelve a validar todo
+  const revisar = () => {
+    const e = {}
+    if (form.nombre.trim().length < 3) e.nombre = 'El nombre debe tener al menos 3 caracteres'
+    if (!/^\d{13}$/.test(form.ruc)) e.ruc = 'El RUC debe tener exactamente 13 dígitos'
+    else if (!form.ruc.endsWith('001')) e.ruc = 'El RUC debe terminar en 001'
+    if (!/^09\d{8}$/.test(form.telefono) && !/^0[2-7]\d{7}$/.test(form.telefono)) e.telefono = 'Escribe un celular (09XXXXXXXX) o un fijo con código de provincia (02XXXXXXX)'
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(form.email.trim())) e.email = 'Escribe un correo válido'
+    if (form.direccion.trim().length < 5) e.direccion = 'Escribe la dirección completa de la oficina matriz'
+    return e
+  }
+
+  const guardar = async (e) => {
+    e.preventDefault()
+    const encontrados = revisar()
+    setErrores(encontrados)
+    if (Object.keys(encontrados).length) return setMensaje({ tipo: 'error', texto: 'Revisa los datos marcados.' })
+    setGuardando(true)
+    try {
+      const { data } = await api.put('/apariencia/mia/datos', form)
+      alGuardar(data)
+      setForm(datosDe(data))
+      setMensaje({ tipo: 'exito', texto: 'Datos de la cooperativa actualizados.' })
+    } catch (err) {
+      setErrores(err.response?.data?.detalles || {})
+      setMensaje({ tipo: 'error', texto: mensajeDeError(err) })
+    } finally {
+      setGuardando(false)
+    }
+  }
+
+  const campo = (name, etiqueta, props = {}) => (
+    <div className={`campo ${errores[name] ? 'campo--error' : ''}`}>
+      <label className="campo__etiqueta" htmlFor={`dato-${name}`}>{etiqueta}</label>
+      <input id={`dato-${name}`} name={name} value={form[name]} onChange={cambiar} aria-invalid={!!errores[name]} {...props} />
+      {errores[name] && <span className="campo__error">{errores[name]}</span>}
+    </div>
+  )
+
+  return (
+    <form className="card" onSubmit={guardar} noValidate>
+      <div className="card-header fila fila--entre">
+        <span>Datos de la cooperativa</span>
+        <span className="insignia">Información de contacto para tus clientes</span>
+      </div>
+      <div className="card-body">
+        {mensaje && <div className={`alerta alerta--${mensaje.tipo}`} role={mensaje.tipo === 'error' ? 'alert' : 'status'}>{mensaje.texto}</div>}
+        <div className="rejilla-2">
+          {campo('nombre', 'Nombre comercial', { maxLength: 120, placeholder: 'Cooperativa de Transportes …' })}
+          {campo('ruc', 'RUC', { inputMode: 'numeric', placeholder: '1890000009001' })}
+          {campo('telefono', 'Teléfono', { inputMode: 'tel', placeholder: '032400001 o 0991234567' })}
+          {campo('email', 'Correo de contacto', { type: 'email', maxLength: 120, placeholder: 'contacto@cooperativa.com' })}
+        </div>
+        {campo('direccion', 'Dirección de la oficina matriz', { maxLength: 200, placeholder: 'Av. Cevallos y Montalvo, Ambato' })}
+        <div className="fila" style={{ justifyContent: 'flex-end' }}>
+          {hayCambios && <button type="button" className="btn" onClick={() => { setForm(original); setErrores({}); setMensaje(null) }}>Descartar</button>}
+          <button className="btn btn-primary" disabled={guardando || !hayCambios}>{guardando ? 'Guardando…' : 'Guardar datos'}</button>
+        </div>
+      </div>
+    </form>
   )
 }
 
