@@ -1,6 +1,7 @@
 const fs = require('fs')
 const { pool, transaccion } = require('../../config/db')
-const { agregar, validarPlaca, validarTexto } = require('../../utils/validaciones')
+const { agregar, validarPlaca } = require('../../utils/validaciones')
+const marcas = require('../marcas/marcas.service')
 
 function errorHttp(mensaje, status, detalles) {
   const error = new Error(mensaje)
@@ -12,15 +13,18 @@ function errorHttp(mensaje, status, detalles) {
 const CAMPOS = `id, numero_disco, placa, marca_chasis, marca_carroceria,
   anio_fabricacion, foto_url, pisos, activo`
 
-function validar(datos, esNuevo) {
+async function validar(datos, esNuevo) {
   // CC-21: reglas completas del bus
   const errores = {}
   const disco = String(datos.numero_disco ?? '').trim()
   if (!disco) errores.numero_disco = 'El número de disco es obligatorio'
   else if (!/^\d{1,4}$/.test(disco)) errores.numero_disco = 'El número de disco debe tener de 1 a 4 números'
   agregar(errores, 'placa', validarPlaca(datos.placa))
-  agregar(errores, 'marca_chasis', validarTexto(datos.marca_chasis, 'la marca del chasis', { max: 40 }))
-  agregar(errores, 'marca_carroceria', validarTexto(datos.marca_carroceria, 'la marca de la carrocería', { max: 40 }))
+  // GC-13: las marcas se eligen del catálogo que administra el admin
+  if (!String(datos.marca_chasis ?? '').trim()) errores.marca_chasis = 'Elige la marca del chasis'
+  else if (!(await marcas.existeActiva('chasis', datos.marca_chasis))) errores.marca_chasis = 'Elige una marca de chasis de la lista'
+  if (!String(datos.marca_carroceria ?? '').trim()) errores.marca_carroceria = 'Elige la marca de la carrocería'
+  else if (!(await marcas.existeActiva('carroceria', datos.marca_carroceria))) errores.marca_carroceria = 'Elige una marca de carrocería de la lista'
   if (datos.anio_fabricacion !== undefined && datos.anio_fabricacion !== null && datos.anio_fabricacion !== '') {
     const anio = Number(datos.anio_fabricacion)
     const maximo = new Date().getFullYear() + 1
@@ -57,7 +61,7 @@ async function listar(cooperativaId) {
 
 // Crea el bus y genera sus asientos (1..N) en la misma transacción
 async function crear(cooperativaId, datos) {
-  validar(datos, true)
+  await validar(datos, true)
 
   return transaccion(async (cliente) => {
     // El tipo de asiento debe pertenecer a la misma cooperativa
@@ -98,7 +102,7 @@ async function crear(cooperativaId, datos) {
 }
 
 async function actualizar(cooperativaId, id, datos) {
-  validar(datos, false)
+  await validar(datos, false)
   const { rows } = await pool.query(
     `UPDATE bus
         SET numero_disco = $1, placa = UPPER($2), marca_chasis = $3,
