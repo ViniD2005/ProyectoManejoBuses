@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import api from '../../services/api.js'
+import { useDialogo } from '../../hooks/useDialogo.jsx'
 
 function mensajeDeError(err) {
   return err.response?.data?.mensaje || 'No se pudo conectar con el servidor'
@@ -9,6 +10,7 @@ const FORM_VACIO = { nombre: '', frecuencias: [] }
 
 // CC-13: un turno agrupa las frecuencias que un mismo bus hace en un día
 export default function Turnos() {
+  const [dialogo, preguntar] = useDialogo()
   const [datos, setDatos] = useState(null)
   const [form, setForm] = useState(FORM_VACIO)
   const [idEdicion, setIdEdicion] = useState(null)
@@ -70,7 +72,14 @@ export default function Turnos() {
   }
 
   const eliminar = async (turno) => {
-    if (!window.confirm(`¿Eliminar ${turno.nombre}? Sus frecuencias quedarán sin turno.`)) return
+    // GC-16: confirmación con la ventana del sistema
+    const ok = await preguntar({
+      titulo: `¿Eliminar ${turno.nombre}?`,
+      mensaje: 'Sus frecuencias quedarán sin turno hasta que las asignes a otro. Los viajes ya generados no cambian.',
+      textoConfirmar: 'Eliminar turno',
+      tono: 'peligro',
+    })
+    if (!ok) return
     try {
       const { data } = await api.delete(`/turnos/${turno.id}`)
       setDatos(data)
@@ -84,6 +93,7 @@ export default function Turnos() {
 
   return (
     <div className="container">
+      {dialogo}
       <h1 className="mb-2">Turnos</h1>
       <p className="text-muted mb-4">
         Un turno agrupa las frecuencias que un mismo bus hace en un día (por ejemplo, la ida y el regreso).
