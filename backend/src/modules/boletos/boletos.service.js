@@ -8,25 +8,8 @@ function errorHttp(mensaje, status) {
   return error
 }
 
-const FORMATO_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-
-// Suma minutos a una hora 'HH:MM' (hora de abordaje en la parada de subida)
-function sumarMinutos(hora, minutos) {
-  const [h, m] = hora.split(':').map(Number)
-  const total = (h * 60 + m + Number(minutos)) % (24 * 60)
-  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
-}
-
-/*
-  Datos de un boleto para imprimirlo.
-  Solo boletos emitidos (pago aprobado) o usados.
-  Puede verlo el cliente dueño de la compra o un oficinista de la cooperativa del viaje.
-*/
-async function obtenerParaImprimir(usuario, codigo) {
-  if (!FORMATO_UUID.test(codigo || '')) throw errorHttp('Código de boleto no válido', 400)
-
-  const { rows } = await pool.query(
-    `SELECT b.codigo, b.estado, b.pasajero_nombre, b.pasajero_cedula,
+// Datos que se imprimen en el boleto (GC-15: compartido por el boleto suelto y el de la compra)
+const CONSULTA_BOLETO = `SELECT b.codigo, b.estado, b.pasajero_nombre, b.pasajero_cedula,
             b.precio_base, b.descuento, b.precio_final, td.nombre AS tipo_descuento,
             c.id AS compra_id, c.cliente_id,
             v.fecha::text AS fecha, f.hora_salida::text AS hora_salida, f.cooperativa_id,
@@ -45,7 +28,27 @@ async function obtenerParaImprimir(usuario, codigo) {
        JOIN parada ps ON ps.frecuencia_id = f.id AND ps.orden = b.orden_subida
        JOIN parada pb ON pb.frecuencia_id = f.id AND pb.orden = b.orden_bajada
        JOIN ciudad cs ON cs.id = ps.ciudad_id
-       JOIN ciudad cb ON cb.id = pb.ciudad_id
+       JOIN ciudad cb ON cb.id = pb.ciudad_id`
+
+const FORMATO_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+// Suma minutos a una hora 'HH:MM' (hora de abordaje en la parada de subida)
+function sumarMinutos(hora, minutos) {
+  const [h, m] = hora.split(':').map(Number)
+  const total = (h * 60 + m + Number(minutos)) % (24 * 60)
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
+}
+
+/*
+  Datos de un boleto para imprimirlo.
+  Solo boletos emitidos (pago aprobado) o usados.
+  Puede verlo el cliente dueño de la compra o un oficinista de la cooperativa del viaje.
+*/
+async function obtenerParaImprimir(usuario, codigo) {
+  if (!FORMATO_UUID.test(codigo || '')) throw errorHttp('Código de boleto no válido', 400)
+
+  const { rows } = await pool.query(
+    `${CONSULTA_BOLETO}
       WHERE b.codigo = $1`,
     [codigo]
   )
@@ -64,9 +67,15 @@ async function obtenerParaImprimir(usuario, codigo) {
 
 // Genera el PDF del boleto con su código QR y lo escribe en la respuesta
 async function generarPdf(boleto, salida) {
-  const qr = await QRCode.toBuffer(boleto.codigo, { width: 220, margin: 1 })
   const doc = new PDFDocument({ size: 'A5', margin: 36 })
   doc.pipe(salida)
+  await dibujarBoleto(doc, boleto)
+  doc.end()
+}
+
+// Dibuja un boleto en la página actual del documento
+async function dibujarBoleto(doc, boleto) {
+  const qr = await QRCode.toBuffer(boleto.codigo, { width: 220, margin: 1 })
 
   doc.fontSize(18).font('Helvetica-Bold').text('Pasajes Ecuador', { align: 'center' })
   doc.fontSize(11).font('Helvetica').text('Boleto de viaje interprovincial', { align: 'center' })
@@ -91,8 +100,35 @@ async function generarPdf(boleto, salida) {
   doc.moveDown(0.5)
   doc.fontSize(8).text(`Código: ${boleto.codigo}`, { align: 'center' })
   doc.text('Presente este código QR al personal del bus al momento de abordar.', { align: 'center' })
+}
 
+/*
+  GC-15: todos los boletos emitidos de una compra, para descargarlos juntos.
+  Solo el cliente dueño de la compra.
+*/
+async function obtenerDeCompra(usuario, compraId) {
+  if (!/^\d+$/.test(String(compraId))) throw errorHttp('Número de compra no válido', 400)
+  const { rows } = await pool.query(
+    `${CONSULTA_BOLETO}
+      WHERE c.id = $1
+      ORDER BY a.numero`,
+    [compraId]
+  )
+  if (!rows.length || rows[0].cliente_id !== usuario.id) throw errorHttp('Compra no encontrada', 404)
+  const listos = rows.filter((b) => ['emitido', 'usado'].includes(b.estado))
+  if (!listos.length) throw errorHttp('Los boletos estarán disponibles cuando el oficinista apruebe el pago', 409)
+  return listos
+}
+
+// Un PDF con una página por boleto (cada pasajero presenta su propio código QR)
+async function generarPdfCompra(boletos, salida) {
+  const doc = new PDFDocument({ size: 'A5', margin: 36, autoFirstPage: false })
+  doc.pipe(salida)
+  for (const boleto of boletos) {
+    doc.addPage()
+    await dibujarBoleto(doc, boleto)
+  }
   doc.end()
 }
 
-module.exports = { obtenerParaImprimir, generarPdf }
+module.exports = { obtenerParaImprimir, generarPdf, obtenerDeCompra, generarPdfCompra }
