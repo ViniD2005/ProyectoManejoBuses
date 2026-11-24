@@ -8,6 +8,7 @@ const rutas = Router()
 // CC-24: apariencia de la cooperativa del usuario (va antes de /:id)
 rutas.get('/mia', autenticar, permitirRoles('cooperativa', 'oficinista', 'personal_bus'), controlador.obtenerMia)
 rutas.put('/mia', autenticar, permitirRoles('cooperativa'), controlador.actualizarMia)
+rutas.put('/mia/datos', autenticar, permitirRoles('cooperativa'), controlador.actualizarDatosMia)
 rutas.post('/mia/logo', autenticar, permitirRoles('cooperativa'), subirLogoCooperativa, controlador.subirLogo)
 rutas.delete('/mia/logo', autenticar, permitirRoles('cooperativa'), controlador.quitarLogo)
 
