@@ -19,6 +19,8 @@ function mensajeDeError(err) {
 export default function Buses() {
   const [buses, setBuses] = useState([])
   const [tipos, setTipos] = useState([])
+  // GC-13: marcas del catálogo que administra el admin
+  const [marcas, setMarcas] = useState([])
   const [form, setForm] = useState(FORM_VACIO)
   const [idEdicion, setIdEdicion] = useState(null)
   const [errores, setErrores] = useState({})
@@ -34,6 +36,9 @@ export default function Buses() {
     cargarBuses()
     api.get('/tipos-asiento')
       .then(({ data }) => setTipos(data))
+      .catch((err) => setError(mensajeDeError(err)))
+    api.get('/marcas')
+      .then(({ data }) => setMarcas(data))
       .catch((err) => setError(mensajeDeError(err)))
   }, [])
 
@@ -105,6 +110,25 @@ export default function Buses() {
     </div>
   )
 
+  // GC-13: la marca se elige de la lista; si el bus tiene una marca desactivada, se sigue mostrando
+  const selectorMarca = (name, tipo, texto) => {
+    const lista = marcas.filter((m) => m.tipo === tipo)
+    const fueraDeLista = form[name] && !lista.some((m) => m.nombre === form[name])
+    return (
+      <div className="mb-3">
+        <label className="form-label" htmlFor={name}>{texto}</label>
+        <select id={name} name={name} className="form-control" value={form[name]} onChange={cambiar} required>
+          <option value="">Elige una marca</option>
+          {fueraDeLista && <option value={form[name]}>{form[name]} (ya no está en el catálogo)</option>}
+          {lista.map((m) => <option key={m.id} value={m.nombre}>{m.nombre}</option>)}
+        </select>
+        {errores[name]
+          ? <small style={{ color: '#b3261e' }}>{errores[name]}</small>
+          : <small className="text-muted">¿No está la marca? Pídele al administrador que la agregue.</small>}
+      </div>
+    )
+  }
+
   return (
     <div className="container">
       <h1 className="mb-2">Buses</h1>
@@ -115,8 +139,8 @@ export default function Buses() {
           <h2 className="h4 mb-3">{idEdicion ? 'Editar bus' : 'Registrar bus'}</h2>
           {campo('numero_disco', 'Número de disco', { required: true })}
           {campo('placa', 'Placa', { required: true, placeholder: 'ABC-1234' })}
-          {campo('marca_chasis', 'Marca del chasis', { required: true, placeholder: 'Mercedes-Benz' })}
-          {campo('marca_carroceria', 'Marca de la carrocería', { required: true, placeholder: 'Olímpica' })}
+          {selectorMarca('marca_chasis', 'chasis', 'Marca del chasis')}
+          {selectorMarca('marca_carroceria', 'carroceria', 'Marca de la carrocería')}
           {campo('anio_fabricacion', 'Año de fabricación', { type: 'number', min: 1990, max: 2030 })}
 
           <div className="mb-3">
