@@ -8,7 +8,8 @@ const { pool } = require('../../config/db')
 async function resumen(cooperativaId) {
   const [cooperativa, indicadores, proximos, manana] = await Promise.all([
     pool.query(
-      `SELECT id, nombre, logo_url, eslogan, color_primario
+      // GC-16: también los datos de contacto para la tarjeta "Tu cooperativa"
+      `SELECT id, nombre, ruc, telefono, email, direccion, logo_url, eslogan, descripcion, whatsapp, color_primario
          FROM cooperativa WHERE id = $1`,
       [cooperativaId]
     ),
