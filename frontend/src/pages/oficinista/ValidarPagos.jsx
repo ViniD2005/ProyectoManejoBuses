@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import api from '../../services/api.js'
+import { useDialogo } from '../../hooks/useDialogo.jsx'
 
 const PESTANAS = [
   { estado: 'en_revision', texto: 'Por validar' },
@@ -12,6 +13,7 @@ function mensajeDeError(err) {
 }
 
 export default function ValidarPagos() {
+  const [dialogo, preguntar] = useDialogo()
   const [estado, setEstado] = useState('en_revision')
   const [compras, setCompras] = useState([])
   const [cargando, setCargando] = useState(true)
@@ -35,13 +37,31 @@ export default function ValidarPagos() {
     setEstado(nuevo)
   }
 
+  // GC-16: confirmación y motivo con la ventana del sistema (antes confirm/prompt)
   const validar = async (compra, aprobado) => {
     let motivo = ''
+    const total = `$${Number(compra.total).toFixed(2)}`
     if (!aprobado) {
-      motivo = window.prompt(`Motivo del rechazo de la compra N.º ${compra.id}:`) || ''
-      if (!motivo.trim()) return
-    } else if (!window.confirm(`¿Aprobar el pago de la compra N.º ${compra.id} por $${Number(compra.total).toFixed(2)}?`)) {
-      return
+      motivo = await preguntar({
+        titulo: `Rechazar el pago de la compra N.º ${compra.id}`,
+        mensaje: 'El cliente verá este motivo en Mis boletos y los asientos quedarán libres para otros pasajeros.',
+        pedirMotivo: true,
+        etiquetaMotivo: 'Motivo del rechazo',
+        placeholderMotivo: 'Ej. El monto del comprobante no coincide con el total de la compra',
+        minimo: 10,
+        textoConfirmar: 'Rechazar pago',
+        tono: 'peligro',
+      })
+      if (!motivo) return
+    } else {
+      const ok = await preguntar({
+        titulo: `¿Aprobar el pago de la compra N.º ${compra.id}?`,
+        mensaje: 'Se emitirán los boletos y el cliente podrá descargarlos con su código QR.',
+        detalle: <><span>Total a verificar: <strong>{total}</strong></span><span>Revisa que el monto y la referencia del comprobante coincidan.</span></>,
+        textoConfirmar: 'Aprobar y emitir boletos',
+        tono: 'exito',
+      })
+      if (!ok) return
     }
     setError('')
     try {
@@ -57,6 +77,7 @@ export default function ValidarPagos() {
 
   return (
     <div className="container">
+      {dialogo}
       <h1 className="mb-2">Validar pagos</h1>
       <p className="text-muted mb-4">
         Revisa los comprobantes de transferencia o depósito. Verifica el monto, la referencia y,
