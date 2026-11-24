@@ -1,0 +1,12 @@
+/* GC-15 - Detalles propios de la compra (casilla "Viajo yo", pasajero registrado) */
+.casilla-viajo {
+  display: flex; align-items: flex-start; gap: .75rem; padding: .85rem 1rem; margin-bottom: 1rem;
+  border: 1.5px solid var(--borde, #e2e8f0); border-radius: 12px; background: var(--superficie-2, #f8fafc); cursor: pointer;
+}
+.casilla-viajo:has(input:checked) { border-color: var(--marca, #1f4e5f); background: color-mix(in srgb, var(--marca, #1f4e5f) 8%, white); }
+.casilla-viajo input { width: 20px; height: 20px; margin-top: 2px; accent-color: var(--marca, #1f4e5f); flex: none; }
+.casilla-viajo strong { display: block; }
+.casilla-viajo small { display: block; color: var(--texto-suave, #5b6b78); font-size: .84rem; }
+.pasajero__registrado { display: block; margin-top: .35rem; color: var(--exito, #15803d); font-size: .82rem; font-weight: 700; }
+.pasajero__nota { margin: .75rem 0 0; padding: .6rem .8rem; border-radius: 10px; background: #fef6e4; color: #7a4a05; font-size: .85rem; font-weight: 600; }
+.descargar-todos { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; margin-top: 1rem; padding: .85rem 1rem; border-radius: 12px; background: #e8f7ee; color: #115e2f; font-weight: 650; }

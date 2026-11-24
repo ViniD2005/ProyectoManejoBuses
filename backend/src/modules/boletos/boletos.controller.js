@@ -8,4 +8,12 @@ const descargarPdf = async (req, res) => {
   await servicio.generarPdf(boleto, res)
 }
 
-module.exports = { descargarPdf }
+// GC-15: todos los boletos de una compra en un solo PDF
+const descargarPdfCompra = async (req, res) => {
+  const boletos = await servicio.obtenerDeCompra(req.usuario, req.params.compraId)
+  res.setHeader('Content-Type', 'application/pdf')
+  res.setHeader('Content-Disposition', `inline; filename="boletos-compra-${req.params.compraId}.pdf"`)
+  await servicio.generarPdfCompra(boletos, res)
+}
+
+module.exports = { descargarPdf, descargarPdfCompra }
