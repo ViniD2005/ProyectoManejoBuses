@@ -13,6 +13,9 @@ import Registro from './pages/auth/Registro.jsx'
 import Cooperativas from './pages/admin/Cooperativas.jsx'
 import Configuracion from './pages/admin/Configuracion.jsx'
 import Usuarios from './pages/admin/Usuarios.jsx'
+// GC-13 - Catálogos del administrador
+import Ubicaciones from './pages/admin/Ubicaciones.jsx'
+import Marcas from './pages/admin/Marcas.jsx'
 
 // Frente E - Panel del oficinista
 import ValidarPagos from './pages/oficinista/ValidarPagos.jsx'
@@ -64,6 +67,8 @@ function App() {
           <Route path="/cooperativas" element={<Cooperativas />} />
           <Route path="/admin/configuracion" element={<Configuracion />} />
           <Route path="/admin/usuarios" element={<Usuarios />} />
+          <Route path="/admin/ubicaciones" element={<Ubicaciones />} />
+          <Route path="/admin/marcas" element={<Marcas />} />
         </Route>
 
         {/* Frente E - Oficinista (solo oficinista) */}
