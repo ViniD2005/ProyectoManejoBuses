@@ -32,6 +32,10 @@ app.use('/api/auth', require('./modules/auth/auth.routes'))
 
 // Tarea 0 - Ciudades
 app.use('/api/ciudades', require('./modules/ciudades/ciudades.routes'))
+
+// GC-13 - Catálogos del administrador: provincias y marcas de buses
+app.use('/api/provincias', require('./modules/provincias/provincias.routes'))
+app.use('/api/marcas', require('./modules/marcas/marcas.routes'))
 // CC-11 - Notificaciones dentro de la aplicacion
 app.use('/api/notificaciones', require('./modules/notificaciones/notificaciones.routes'));
 
