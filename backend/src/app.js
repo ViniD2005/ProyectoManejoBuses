@@ -86,14 +86,17 @@ app.use('/api/compras', require('./modules/compras/compras.routes'))
 // Frente E - Validacion de pagos (oficinista)
 app.use('/api/pagos', require('./modules/pagos/pagos.routes'))
 
-// GC-19 - Grupos de buses y frecuencias (la hoja de ruta se arma por grupo)
-app.use('/api/grupos', require('./modules/grupos/grupos.routes'))
+// CC-13 - Turnos y hoja de ruta semanal
+app.use('/api/turnos', require('./modules/turnos/turnos.routes'))
 
 // CC-24 - Apariencia de cada cooperativa
 app.use('/api/apariencia', require('./modules/apariencia/apariencia.routes'))
 
 // GC-9 - Panel de inicio del personal de la cooperativa
 app.use('/api/panel', require('./modules/panel/panel.routes'))
+
+// GC-18 - Estructura (plantilla) de asientos de cada bus
+app.use('/api/estructura-buses', require('./modules/estructura-buses/estructura-buses.routes'))
 
 // CC-6 - Boletos en PDF con codigo QR
 app.use('/api/boletos', require('./modules/boletos/boletos.routes'))

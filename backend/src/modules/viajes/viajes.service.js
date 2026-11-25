@@ -154,6 +154,11 @@ async function obtenerAsientos(viajeId, subida, bajada) {
 
   const { rows } = await pool.query(`
     SELECT a.id, a.numero, a.piso,
+           -- GC-18: lugar del asiento en el mapa (si el bus aún no tiene estructura, filas de 2 + 2)
+           COALESCE(a.fila, ((ROW_NUMBER() OVER (PARTITION BY a.piso ORDER BY a.numero) - 1) / 4 + 1)::int) AS fila,
+           COALESCE(a.columna, (ARRAY[1, 2, 4, 5])[((ROW_NUMBER() OVER (PARTITION BY a.piso ORDER BY a.numero) - 1) % 4 + 1)::int]) AS columna,
+           COALESCE(bp.izquierda, 2) AS izquierda,
+           COALESCE(bp.derecha, 2) AS derecha,
            ta.id AS tipo_asiento_id,
            ta.nombre AS tipo_asiento,
            ROUND($6::numeric * ta.factor_precio, 2) AS precio,
@@ -169,6 +174,7 @@ async function obtenerAsientos(viajeId, subida, bajada) {
     FROM asiento a
     JOIN tipo_asiento ta ON ta.id = a.tipo_asiento_id
       AND ta.cooperativa_id = $2
+    LEFT JOIN bus_piso bp ON bp.bus_id = a.bus_id AND bp.piso = a.piso
     WHERE a.bus_id = $1
     ORDER BY a.piso, a.numero
   `, [

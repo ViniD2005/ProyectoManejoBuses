@@ -40,12 +40,14 @@ const MENU = {
     { grupo: 'Flota', enlaces: [
       { a: '/buses', texto: 'Buses', icono: 'bus' },
       { a: '/cooperativa/tipos-asiento', texto: 'Tipos de asiento', icono: 'asiento' },
+      // GC-18: plantilla de asientos de cada bus
+      { a: '/cooperativa/estructura-asientos', texto: 'Estructura de asientos', icono: 'paleta' },
     ] },
     { grupo: 'Operación', enlaces: [
       { a: '/frecuencias', texto: 'Frecuencias', icono: 'reloj' },
-      // GC-19: la hoja de ruta se arma por grupo
-      { a: '/cooperativa/grupos', texto: 'Grupos', icono: 'capas' },
-      { a: '/cooperativa/hoja-ruta', texto: 'Hoja de ruta', icono: 'calendario' },
+      { a: '/cooperativa/hojas-ruta', texto: 'Hojas de ruta', icono: 'ruta' },
+      { a: '/cooperativa/turnos', texto: 'Turnos', icono: 'capas' },
+      { a: '/cooperativa/hoja-semanal', texto: 'Hoja semanal', icono: 'calendario' },
     ] },
     { grupo: 'Mi cooperativa', enlaces: [
       { a: '/cooperativa/personal', texto: 'Personal', icono: 'usuarios' },
