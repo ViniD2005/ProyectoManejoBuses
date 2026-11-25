@@ -19,5 +19,8 @@ rutas.post('/:id/comprobante', autenticar, permitirRoles('cliente'), subirCompro
 
 // CC-14: venta en ventanilla, pago en efectivo (solo oficinista)
 rutas.post('/ventanilla', autenticar, permitirRoles('oficinista'), controlador.venderEnVentanilla)
+// GC-22: viajes de SU cooperativa (?origen=&destino=&fecha=&pasajeros=) y cierre de caja del día
+rutas.get('/ventanilla/viajes', autenticar, permitirRoles('oficinista'), controlador.viajesVentanilla)
+rutas.get('/ventanilla/hoy', autenticar, permitirRoles('oficinista'), controlador.ventasDelDia)
 
 module.exports = rutas

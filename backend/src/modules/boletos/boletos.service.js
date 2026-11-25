@@ -114,7 +114,10 @@ async function obtenerDeCompra(usuario, compraId) {
       ORDER BY a.numero`,
     [compraId]
   )
-  if (!rows.length || rows[0].cliente_id !== usuario.id) throw errorHttp('Compra no encontrada', 404)
+  // GC-22: el cliente dueño de la compra o un oficinista de la cooperativa del viaje (venta en ventanilla)
+  const esDueno = usuario.rol === 'cliente' && rows[0]?.cliente_id === usuario.id
+  const esOficinista = usuario.rol === 'oficinista' && rows[0]?.cooperativa_id === usuario.cooperativa_id
+  if (!rows.length || (!esDueno && !esOficinista)) throw errorHttp('Compra no encontrada', 404)
   const listos = rows.filter((b) => ['emitido', 'usado'].includes(b.estado))
   if (!listos.length) throw errorHttp('Los boletos estarán disponibles cuando el oficinista apruebe el pago', 409)
   return listos

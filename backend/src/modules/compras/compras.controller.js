@@ -26,4 +26,8 @@ const buscarPasajero = async (req, res) => {
   res.json(await servicio.buscarPasajero(req.query.cedula))
 }
 
-module.exports = { catalogos, crear, listarMias, subirComprobante, venderEnVentanilla, buscarPasajero }
+// GC-22: viajes de la cooperativa del oficinista y su cierre de caja del día
+const viajesVentanilla = async (req, res) => res.json(await servicio.viajesVentanilla(req.usuario, req.query))
+const ventasDelDia = async (req, res) => res.json(await servicio.ventasDelDia(req.usuario))
+
+module.exports = { catalogos, crear, listarMias, subirComprobante, venderEnVentanilla, buscarPasajero, viajesVentanilla, ventasDelDia }
