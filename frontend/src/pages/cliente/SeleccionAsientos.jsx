@@ -5,11 +5,19 @@ import { useAuth } from '../../context/AuthContext.jsx'
 import { dinero, duracion, fechaLarga, horaEnParada } from './formatos.js'
 import './Viajes.css'
 
-// Agrupa los asientos de un piso en filas de 4 (2 + pasillo + 2), como en el bus
-function enFilas(asientos) {
-  const filas = []
-  for (let i = 0; i < asientos.length; i += 4) filas.push(asientos.slice(i, i + 4))
-  return filas
+/*
+  GC-18: arma el piso con la estructura real del bus (fila y columna de cada
+  asiento; izquierda + pasillo + derecha). Devuelve las columnas de la
+  cuadrícula, la posición del pasillo y una matriz [fila][columna] → asiento.
+*/
+function distribuir(asientos) {
+  const izquierda = asientos[0]?.izquierda || 2
+  const derecha = asientos[0]?.derecha || 2
+  const columnas = izquierda + 1 + derecha
+  const totalFilas = Math.max(1, ...asientos.map((a) => a.fila || 1))
+  const matriz = Array.from({ length: totalFilas }, () => new Array(columnas).fill(null))
+  for (const a of asientos) if (a.fila && a.columna) matriz[a.fila - 1][a.columna - 1] = a
+  return { columnas, pasillo: izquierda, matriz }
 }
 
 // Mapa de asientos del bus (rediseño CC-20)
@@ -63,6 +71,9 @@ function SeleccionAsientos() {
   const pisos = [...new Set(asientos.map((a) => a.piso))].sort((a, b) => a - b)
   const piso = pisoElegido ?? pisos[0]
   const elegidos = asientos.filter((a) => seleccionados.includes(a.id))
+  const distribucion = distribuir(asientos.filter((a) => a.piso === piso))
+  // El pasillo es angosto; cada asiento ocupa una columna igual
+  const plantillaColumnas = Array.from({ length: distribucion.columnas }, (_, j) => (j === distribucion.pasillo ? '22px' : 'minmax(0, 1fr)')).join(' ')
   const total = elegidos.reduce((suma, asiento) => suma + asiento.precio, 0)
   const libres = asientos.filter((a) => a.disponible).length
 
@@ -143,18 +154,19 @@ function SeleccionAsientos() {
               </div>
             )}
 
+            {/* GC-18: el aviso aparece junto al mapa, donde el cliente está mirando */}
+            {aviso && <p className="viajes__error" role="status" style={{ marginTop: 0 }}>{aviso}</p>}
             <div className="bus" aria-label={`Mapa de asientos del piso ${piso}`}>
               <div className="bus__frente">
                 <span>{piso === 1 ? 'Frente del bus' : `Piso ${piso}`}</span>
                 {piso === 1 && <span className="bus__volante" title="Conductor">◎</span>}
               </div>
               <div className="bus__filas">
-                {enFilas(asientos.filter((a) => a.piso === piso)).map((fila, i) => (
-                  <div className="bus__fila" key={i}>
-                    {[0, 1, null, 2, 3].map((posicion, j) => {
-                      if (posicion === null) return <span key="pasillo" className="bus__fila-numero">{i + 1}</span>
-                      const asiento = fila[posicion]
-                      if (!asiento) return <span key={j} />
+                {distribucion.matriz.map((fila, i) => (
+                  <div className="bus__fila" key={i} style={{ gridTemplateColumns: plantillaColumnas }}>
+                    {fila.map((asiento, j) => {
+                      if (j === distribucion.pasillo) return <span key="pasillo" className="bus__fila-numero">{i + 1}</span>
+                      if (!asiento) return <span key={j} className="bus__hueco" />
                       const elegido = seleccionados.includes(asiento.id)
                       return (
                         <button
@@ -207,7 +219,6 @@ function SeleccionAsientos() {
                 <p style={{ color: 'var(--v-suave)', fontSize: '.9rem' }}>Toca un asiento libre en el mapa para elegirlo.</p>
               )}
 
-              {aviso && <p className="viajes__error" role="status">{aviso}</p>}
 
               {porTipo.map((g) => (
                 <div key={g.tipo} className="lateral__fila"><span>{g.cantidad} × {g.tipo}</span><strong>{dinero(g.subtotal)}</strong></div>
