@@ -5,6 +5,7 @@ import RutaProtegida from './components/RutaProtegida.jsx'
 import Inicio from './pages/Inicio.jsx'
 import NoEncontrado from './pages/NoEncontrado.jsx'
 
+
 // Tarea 0 - Autenticacion
 import Login from './pages/auth/Login.jsx'
 import Registro from './pages/auth/Registro.jsx'
@@ -28,6 +29,8 @@ import VenderBoletos from './pages/oficinista/VenderBoletos.jsx'
 // Frente B - Flota
 import Buses from './pages/Buses.jsx'
 import TiposAsiento from './pages/cooperativa/TiposAsiento.jsx'
+// GC-18 - Estructura (plantilla) de asientos de cada bus
+import EstructuraBus from './pages/cooperativa/EstructuraBus.jsx'
 
 // Frente C - Operacion
 import Frecuencias from './pages/cooperativa/Frecuencias.jsx'
@@ -87,6 +90,8 @@ function App() {
           <Route path="/buses" element={<Buses />} />
           <Route path="/cooperativa/personal" element={<Usuarios />} />
           <Route path="/cooperativa/tipos-asiento" element={<TiposAsiento />} />
+          {/* GC-18 - Estructura (plantilla) de asientos de cada bus */}
+          <Route path="/cooperativa/estructura-bus" element={<EstructuraBus />} />
           <Route path="/frecuencias" element={<Frecuencias />} />
           <Route path="/cooperativa/grupos" element={<Grupos />} />
           <Route path="/cooperativa/hoja-ruta" element={<HojaRuta />} />
