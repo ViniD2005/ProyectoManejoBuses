@@ -21,4 +21,7 @@ const actualizarFoto = async (req, res) => {
   res.json(await servicio.actualizarFoto(req.usuario.cooperativa_id, req.params.id, req.file))
 }
 
-module.exports = { listar, crear, actualizar, cambiarEstado, actualizarFoto }
+// GC-20: servicios a bordo que se pueden marcar
+const servicios = (req, res) => res.json(servicio.servicios())
+
+module.exports = { listar, crear, actualizar, cambiarEstado, actualizarFoto, servicios }
