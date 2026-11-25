@@ -34,7 +34,7 @@ const INDICADORES = {
 // Accesos rápidos de cada rol
 const ACCESOS = {
   cooperativa: [
-    { a: '/cooperativa/hoja-semanal', texto: 'Hoja semanal', detalle: 'Genera los viajes de la semana', icono: 'calendario' },
+    { a: '/cooperativa/hoja-ruta', texto: 'Hoja de ruta', detalle: 'Genera los viajes por grupo', icono: 'calendario' },
     { a: '/buses', texto: 'Buses', detalle: 'Flota y mapa de asientos', icono: 'bus' },
     { a: '/frecuencias', texto: 'Frecuencias', detalle: 'Rutas, horarios y precios', icono: 'reloj' },
     { a: '/cooperativa/personal', texto: 'Personal', detalle: 'Oficinistas y choferes', icono: 'usuarios' },
@@ -100,7 +100,7 @@ export default function PanelInicio() {
           <Icono nombre="calendario" />
           <div>
             <strong>Todavía no hay viajes para mañana</strong>
-            Genera los viajes desde la <Link to="/cooperativa/hoja-semanal">Hoja semanal</Link> para que los clientes puedan comprar.
+            Genera los viajes desde la <Link to="/cooperativa/hoja-ruta">Hoja de ruta</Link> para que los clientes puedan comprar.
           </div>
         </div>
       )}
@@ -135,7 +135,7 @@ export default function PanelInicio() {
         <section className="card" style={{ marginBottom: 0 }}>
           <div className="card-header fila fila--entre">
             <span>Viajes de hoy</span>
-            {rol === 'cooperativa' && <Link to="/cooperativa/hojas-ruta" className="btn btn-sm">Ver hojas de ruta</Link>}
+            {rol === 'cooperativa' && <Link to="/cooperativa/hoja-ruta" className="btn btn-sm">Ver hoja de ruta</Link>}
           </div>
           {datos && datos.proximos_viajes.length === 0 && (
             <div className="vacio" style={{ border: 0, borderRadius: 0 }}>
