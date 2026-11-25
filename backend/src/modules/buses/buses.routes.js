@@ -9,6 +9,7 @@ const rutas = Router()
 rutas.use(autenticar, permitirRoles('cooperativa'))
 
 rutas.get('/', controlador.listar)
+rutas.get('/servicios', controlador.servicios)   // GC-20
 rutas.post('/', controlador.crear)
 rutas.put('/:id', controlador.actualizar)
 rutas.patch('/:id/estado', controlador.cambiarEstado)
