@@ -1,0 +1,52 @@
+/* GC-18 - Editor de la estructura de asientos */
+.estructura__barra .card-body { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 1rem; }
+.estructura__barra .campo { margin: 0; min-width: min(420px, 100%); }
+.estructura__chips { display: flex; flex-wrap: wrap; gap: 0.4rem; padding-bottom: 0.4rem; }
+.estructura__cuerpo { display: grid; grid-template-columns: 320px 1fr; gap: 1rem; align-items: start; }
+@media (max-width: 900px) { .estructura__cuerpo { grid-template-columns: 1fr; } }
+.estructura__herramientas { position: sticky; top: 1rem; margin-bottom: 0; }
+.estructura__titulo { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--texto-suave); margin: 1.2rem 0 0.6rem; }
+.estructura__ayuda { font-size: 0.85rem; margin: -0.2rem 0 0.7rem; }
+.estructura__distribuciones { display: grid; grid-template-columns: 1fr 1fr; gap: 0.45rem; margin-bottom: 0.9rem; }
+.estructura__distribuciones button, .estructura__pinceles button {
+  display: flex; gap: 0.6rem; align-items: center; text-align: left; padding: 0.6rem 0.7rem; border: 1px solid var(--borde);
+  border-radius: 10px; background: var(--superficie); cursor: pointer; color: var(--texto); font: inherit;
+}
+.estructura__distribuciones button { flex-direction: column; align-items: flex-start; gap: 0.1rem; }
+.estructura__distribuciones span, .estructura__pinceles small { display: block; font-size: 0.75rem; color: var(--texto-suave); }
+.estructura__distribuciones button.activa, .estructura__pinceles button.activo { border-color: var(--marca); box-shadow: 0 0 0 2px var(--marca-suave); background: var(--marca-suave); }
+.estructura__distribuciones button:disabled, .estructura__pinceles button:disabled { cursor: not-allowed; opacity: 0.6; }
+.estructura__pinceles { display: grid; gap: 0.45rem; }
+.estructura__pinceles i { width: 26px; height: 26px; border-radius: 7px; border: 1px solid rgba(0, 0, 0, 0.12); flex: none; }
+.estructura__pinceles i.quitar { background: repeating-linear-gradient(45deg, #fff 0 4px, #f1d4d1 4px 8px); }
+.estructura__rapidas { display: flex; gap: 0.4rem; margin-top: 0.8rem; }
+.estructura__filas { display: flex; gap: 0.4rem; align-items: center; }
+.estructura__filas input { width: 80px; text-align: center; }
+
+.estructura__lienzo { margin-bottom: 0; overflow-x: auto; }
+.estructura__bus {
+  width: max-content; margin: 0 auto; padding: 1.2rem 1.4rem; border: 3px solid #cbd5e1; border-radius: 46px 46px 22px 22px;
+  background: #fbfcfd; user-select: none;
+}
+.estructura__frente, .estructura__fondo {
+  display: flex; justify-content: space-between; align-items: center; color: var(--texto-suave);
+  font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em;
+}
+.estructura__frente { padding-bottom: 0.9rem; margin-bottom: 0.9rem; border-bottom: 2px dashed var(--borde); }
+.estructura__fondo { justify-content: center; padding-top: 0.9rem; margin-top: 0.9rem; border-top: 2px dashed var(--borde); }
+.estructura__volante { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; border: 3px solid #c3ccd5; color: #9aa7b3; }
+.estructura__rejilla { display: grid; gap: 0.4rem; }
+.estructura__fila { display: contents; }
+.estructura__numero-fila {
+  border: 0; background: transparent; color: var(--texto-suave); font-size: 0.72rem; font-weight: 800; cursor: pointer; border-radius: 6px;
+}
+.estructura__numero-fila:hover:not(:disabled) { background: var(--marca-suave); color: var(--marca-oscura); }
+.estructura__pasillo { display: block; }
+.estructura__asiento {
+  height: 42px; border: 1px solid rgba(15, 23, 42, 0.18); border-radius: 9px 9px 6px 6px; font-weight: 800; font-size: 0.82rem;
+  color: #1f2937; cursor: crosshair; box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.08); transition: transform 80ms;
+}
+.estructura__asiento:hover:not(:disabled) { transform: translateY(-1px); outline: 2px solid var(--marca); }
+.estructura__asiento--vacio { background: transparent; border-style: dashed; box-shadow: none; }
+.estructura__asiento:disabled { cursor: not-allowed; }
+.estructura__acciones { display: flex; justify-content: flex-end; gap: 0.6rem; margin-top: 1rem; position: sticky; bottom: 0.75rem; }
