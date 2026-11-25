@@ -323,5 +323,62 @@ async function buscarPasajero(cedula) {
   return rows[0] ? { registrado: true, ...rows[0] } : { registrado: false }
 }
 
+/*
+  GC-22: viajes de la cooperativa del oficinista para vender en ventanilla.
+  Usa la misma búsqueda del cliente (solo salidas futuras con asientos libres)
+  y deja únicamente los viajes de SU cooperativa.
+*/
+async function viajesVentanilla(oficinista, consulta) {
+  const errores = {}
+  const origen = Number(consulta.origen)
+  const destino = Number(consulta.destino)
+  const pasajeros = consulta.pasajeros ? Number(consulta.pasajeros) : 1
+  if (!Number.isInteger(origen) || origen <= 0) errores.origen = 'Elige el origen'
+  if (!Number.isInteger(destino) || destino <= 0) errores.destino = 'Elige el destino'
+  else if (origen === destino) errores.destino = 'El destino debe ser distinto del origen'
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(consulta.fecha || '')) errores.fecha = 'Elige la fecha del viaje'
+  if (!Number.isInteger(pasajeros) || pasajeros < 1 || pasajeros > 10) errores.pasajeros = 'Puedes vender de 1 a 10 pasajes por venta'
+  if (Object.keys(errores).length) throw errorHttp('Revisa la búsqueda', 400, errores)
+
+  const { buscarViajes } = require('../viajes/viajes.service')
+  return buscarViajes({ origen, destino, fecha: consulta.fecha, pasajeros, cooperativa: oficinista.cooperativa_id })
+}
+
+/*
+  GC-22: cierre de caja del día del oficinista (ventas en efectivo de hoy).
+*/
+async function ventasDelDia(oficinista) {
+  const { rows } = await pool.query(
+    `SELECT COUNT(DISTINCT c.id)::int AS ventas,
+            COUNT(b.id)::int AS boletos,
+            COALESCE(SUM(b.precio_final), 0)::numeric(10,2) AS total
+       FROM compra c
+       JOIN boleto b ON b.compra_id = c.id AND b.estado <> 'anulado'
+      WHERE c.vendido_por = $1
+        AND (c.creado_en AT TIME ZONE 'America/Guayaquil')::date = (NOW() AT TIME ZONE 'America/Guayaquil')::date`,
+    [oficinista.id]
+  )
+  const ultimas = await pool.query(
+    `SELECT c.id, c.total, to_char(c.creado_en AT TIME ZONE 'America/Guayaquil', 'HH24:MI') AS hora,
+            COUNT(b.id)::int AS boletos, MIN(cs.nombre) AS origen, MIN(cd.nombre) AS destino
+       FROM compra c
+       JOIN boleto b ON b.compra_id = c.id
+       JOIN viaje v ON v.id = b.viaje_id
+       JOIN parada ps ON ps.frecuencia_id = v.frecuencia_id AND ps.orden = b.orden_subida
+       JOIN parada pd ON pd.frecuencia_id = v.frecuencia_id AND pd.orden = b.orden_bajada
+       JOIN ciudad cs ON cs.id = ps.ciudad_id
+       JOIN ciudad cd ON cd.id = pd.ciudad_id
+      WHERE c.vendido_por = $1
+        AND (c.creado_en AT TIME ZONE 'America/Guayaquil')::date = (NOW() AT TIME ZONE 'America/Guayaquil')::date
+      GROUP BY c.id
+      ORDER BY c.creado_en DESC
+      LIMIT 8`,
+    [oficinista.id]
+  )
+  return { ...rows[0], total: Number(rows[0].total), ultimas: ultimas.rows.map((u) => ({ ...u, total: Number(u.total) })) }
+}
+
 module.exports = {
-  buscarPasajero, obtenerCatalogos, crear, listarMias, subirComprobante, venderEnVentanilla }
+  buscarPasajero, obtenerCatalogos, crear, listarMias, subirComprobante, venderEnVentanilla,
+  viajesVentanilla, ventasDelDia,
+}
