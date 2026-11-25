@@ -43,9 +43,9 @@ const MENU = {
     ] },
     { grupo: 'Operación', enlaces: [
       { a: '/frecuencias', texto: 'Frecuencias', icono: 'reloj' },
-      { a: '/cooperativa/hojas-ruta', texto: 'Hojas de ruta', icono: 'ruta' },
-      { a: '/cooperativa/turnos', texto: 'Turnos', icono: 'capas' },
-      { a: '/cooperativa/hoja-semanal', texto: 'Hoja semanal', icono: 'calendario' },
+      // GC-19: la hoja de ruta se arma por grupo
+      { a: '/cooperativa/grupos', texto: 'Grupos', icono: 'capas' },
+      { a: '/cooperativa/hoja-ruta', texto: 'Hoja de ruta', icono: 'calendario' },
     ] },
     { grupo: 'Mi cooperativa', enlaces: [
       { a: '/cooperativa/personal', texto: 'Personal', icono: 'usuarios' },
