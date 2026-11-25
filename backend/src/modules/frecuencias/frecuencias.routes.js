@@ -18,6 +18,9 @@ rutas.get('/:id', controlador.obtener)
 // POST: crear frecuencia con paradas
 rutas.post('/', controlador.crear)
 
+// GC-21: editar frecuencia y su recorrido
+rutas.put('/:id', controlador.actualizar)
+
 // PATCH: activar o desactivar frecuencia
 rutas.patch('/:id/estado', controlador.cambiarEstado)
 
