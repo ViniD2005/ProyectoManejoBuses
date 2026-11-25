@@ -1,0 +1,24 @@
+/* GC-20 - Flota: tabla de buses y ficha completa */
+.flota__resumen { margin-bottom: 1rem; }
+.flota__filtros { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 1rem; }
+.flota__buscar { margin: 0; flex: 1; max-width: 420px; }
+.flota__tabla td { vertical-align: middle; }
+.flota__bus { display: flex; align-items: center; gap: 0.75rem; }
+.flota__bus img, .flota__sin-foto { width: 64px; height: 44px; border-radius: 8px; object-fit: cover; flex: none; }
+.flota__sin-foto { display: grid; place-items: center; background: var(--marca-suave); color: var(--marca); }
+.flota__sin-foto--grande { width: 160px; height: 104px; }
+.flota__bus strong, .flota__bus span, .flota__dato { display: block; }
+.flota__bus span { font-size: 0.82rem; color: var(--texto-suave); }
+.flota__dato { font-size: 0.9rem; }
+.flota__servicios span { font-size: 1.05rem; margin-right: 0.15rem; cursor: help; }
+.flota__matricula { display: inline-flex; margin-top: 0.3rem; }
+.flota__acciones { white-space: nowrap; text-align: right; }
+.flota__inactivo td { opacity: 0.65; }
+.flota__seccion { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--texto-suave); margin: 1.3rem 0 0.7rem; }
+.flota__seccion:first-of-type { margin-top: 0; }
+.flota__checks { display: grid; grid-template-columns: 1fr 1fr; gap: 0.45rem; }
+.flota__check { display: flex; align-items: center; gap: 0.5rem; padding: 0.55rem 0.7rem; border: 1px solid var(--borde); border-radius: 10px; cursor: pointer; font-size: 0.9rem; }
+.flota__check.activo { border-color: var(--marca); background: var(--marca-suave); }
+.flota__foto { display: flex; flex-wrap: wrap; align-items: center; gap: 0.8rem; }
+.flota__foto img { width: 160px; height: 104px; object-fit: cover; border-radius: 10px; }
+@media (max-width: 560px) { .flota__checks { grid-template-columns: 1fr; } }
