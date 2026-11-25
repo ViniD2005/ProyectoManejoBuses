@@ -91,7 +91,7 @@ function App() {
           <Route path="/cooperativa/personal" element={<Usuarios />} />
           <Route path="/cooperativa/tipos-asiento" element={<TiposAsiento />} />
           {/* GC-18 - Estructura (plantilla) de asientos de cada bus */}
-          <Route path="/cooperativa/estructura-bus" element={<EstructuraBus />} />
+          <Route path="/cooperativa/estructura-asientos" element={<EstructuraBus />} />
           <Route path="/frecuencias" element={<Frecuencias />} />
           <Route path="/cooperativa/grupos" element={<Grupos />} />
           <Route path="/cooperativa/hoja-ruta" element={<HojaRuta />} />
