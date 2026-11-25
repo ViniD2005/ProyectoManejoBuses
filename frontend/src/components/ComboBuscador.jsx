@@ -36,11 +36,29 @@ function ComboBuscador({
   const filtradas = useMemo(() => {
     const buscado = normalizar(texto).trim()
     if (!buscado) return opciones
-    const palabras = buscado.split(/\s+/)
-    return opciones.filter((o) => {
-      const etiqueta = normalizar(`${o.etiqueta} ${o.detalle || ''}`)
-      return palabras.every((p) => etiqueta.includes(p))
-    })
+    const palabras = buscado.split(/\s+/).filter((p) => p !== '-')
+    /*
+      GC-19: las coincidencias exactas van primero. Con "quito" sale antes
+      "Pichincha - Quito" que "Pichincha - Puerto Quito"; con "baños" salen
+      los dos Baños (Tungurahua y Azuay) arriba de todo.
+    */
+    const puntaje = (o) => {
+      const etiqueta = normalizar(o.etiqueta)
+      const nombre = etiqueta.split(' - ').pop()
+      const ultima = palabras[palabras.length - 1]
+      if (etiqueta === buscado || nombre === buscado) return 0
+      if (nombre === ultima) return 1
+      if (nombre.startsWith(ultima)) return 2
+      return 3
+    }
+    return opciones
+      .filter((o) => {
+        const etiqueta = normalizar(`${o.etiqueta} ${o.detalle || ''}`)
+        return palabras.every((p) => etiqueta.includes(p))
+      })
+      .map((o, i) => ({ o, i, p: puntaje(o) }))
+      .sort((a, b) => a.p - b.p || a.i - b.i)
+      .map((x) => x.o)
   }, [opciones, texto])
 
   // Cierra al hacer clic fuera

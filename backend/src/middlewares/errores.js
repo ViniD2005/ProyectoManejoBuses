@@ -14,7 +14,6 @@ const DUPLICADOS = {
   bus_cooperativa_id_numero_disco_key: ['numero_disco', 'Ya tienes un bus con este número de disco'],
   ciudad_nombre_key: ['nombre', 'Esta ciudad ya está registrada'],
   tipo_asiento_cooperativa_id_nombre_key: ['nombre', 'Ya tienes un tipo de asiento con este nombre'],
-  turno_cooperativa_id_nombre_key: ['nombre', 'Ya tienes un turno con este nombre'],
   frecuencia_cooperativa_id_ciudad_origen_id_ciudad_destino_i_key: [
     'hora_salida', 'Ya tienes una frecuencia con el mismo origen, destino y hora de salida',
   ],
