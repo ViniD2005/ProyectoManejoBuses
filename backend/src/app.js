@@ -29,6 +29,8 @@ app.get('/api/salud', (req, res) => {
 
 // Tarea 0 - Autenticacion
 app.use('/api/auth', require('./modules/auth/auth.routes'))
+// GC-36 - Mi cuenta: datos propios y cambio de contraseña
+app.use('/api/cuenta', require('./modules/cuenta/cuenta.routes'))
 
 // Tarea 0 - Ciudades
 app.use('/api/ciudades', require('./modules/ciudades/ciudades.routes'))
@@ -100,8 +102,8 @@ app.use('/api/estructura-buses', require('./modules/estructura-buses/estructura-
 
 // CC-6 - Boletos en PDF con codigo QR
 app.use('/api/boletos', require('./modules/boletos/boletos.routes'))
-// GC-34 - Sección del chofer: viajes, inicio/fin, validación de boletos, venta a bordo e historial
-app.use('/api/chofer', require('./modules/chofer/chofer.routes'))
+// CC-15 - Abordaje del personal del bus
+app.use('/api/accesos', require('./modules/accesos/accesos.routes'))
 
 // ========================================
 // RUTAS NO ENCONTRADAS
