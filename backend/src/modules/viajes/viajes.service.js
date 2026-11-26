@@ -12,20 +12,27 @@ async function buscarViajes(filtros) {
   const {
     origen, destino, fecha, cooperativa = null,
     tipoAsiento = null, marcaChasis = null,
-    marcaCarroceria = null, tipoViaje = null,
+    marcaCarroceria = null, tipoViaje = null, pasajeros = 1,
   } = filtros
 
   const sql = `
     SELECT v.id, v.fecha::text AS fecha,
            f.hora_salida::text AS hora_salida,
            f.tipo_viaje,
+           -- GC-35: ruta destacada solo si la cooperativa tiene el plan vigente
+           (f.destacada AND c.rutas_destacadas > 0 AND c.destacadas_hasta >= CURRENT_DATE) AS destacado,
            c.id AS cooperativa_id, c.nombre AS cooperativa,
+           (c.cuenta_numero IS NOT NULL) AS pago_en_linea, -- GC-43: la cooperativa recibe transferencias
+           c.logo_url AS cooperativa_logo, c.color_primario AS cooperativa_color,
+           c.color_acento AS cooperativa_acento, c.eslogan AS cooperativa_eslogan,
            b.id AS bus_id, b.numero_disco, b.placa,
            b.marca_chasis, b.marca_carroceria,
            b.foto_url, b.pisos,
            po.orden AS orden_subida,
            pd.orden AS orden_bajada,
            po.minutos_desde_salida,
+           pd.minutos_desde_salida AS minutos_llegada,
+           (pd.minutos_desde_salida - po.minutos_desde_salida) AS duracion_minutos,
            origen_c.nombre AS origen,
            destino_c.nombre AS destino,
            disponibles.asientos_libres,
@@ -83,12 +90,17 @@ async function buscarViajes(filtros) {
       AND ($7::text IS NULL OR
         b.marca_carroceria ILIKE '%' || $7 || '%')
       AND ($8::text IS NULL OR f.tipo_viaje = $8)
-    ORDER BY f.hora_salida, c.nombre, v.id
+      -- GC-14: solo viajes que todavía no salen de la parada de subida
+      AND (v.fecha::timestamp + f.hora_salida + make_interval(mins => po.minutos_desde_salida)) > LOCALTIMESTAMP
+      -- GC-14: solo viajes con asientos libres para todos los pasajeros buscados
+      AND disponibles.asientos_libres >= $9
+    -- GC-35: primero los viajes destacados, luego por hora de salida
+    ORDER BY destacado DESC, f.hora_salida, c.nombre, v.id
   `
 
   const parametros = [
     origen, destino, fecha, cooperativa,
-    tipoAsiento, marcaChasis, marcaCarroceria, tipoViaje,
+    tipoAsiento, marcaChasis, marcaCarroceria, tipoViaje, pasajeros,
   ]
 
   const { rows } = await pool.query(sql, parametros)
@@ -108,6 +120,9 @@ async function obtenerTramo(viajeId, subida, bajada) {
            f.hora_salida::text AS hora_salida,
            f.tipo_viaje, f.numero_resolucion,
            c.id AS cooperativa_id, c.nombre AS cooperativa,
+           (c.cuenta_numero IS NOT NULL) AS pago_en_linea, -- GC-43: la cooperativa recibe transferencias
+           c.logo_url AS cooperativa_logo, c.color_primario AS cooperativa_color,
+           c.color_acento AS cooperativa_acento, c.eslogan AS cooperativa_eslogan,
            b.id AS bus_id, b.numero_disco, b.placa,
            b.marca_chasis, b.marca_carroceria,
            b.foto_url, b.pisos,
@@ -144,6 +159,11 @@ async function obtenerAsientos(viajeId, subida, bajada) {
 
   const { rows } = await pool.query(`
     SELECT a.id, a.numero, a.piso,
+           -- GC-18: lugar del asiento en el mapa (si el bus aún no tiene estructura, filas de 2 + 2)
+           COALESCE(a.fila, ((ROW_NUMBER() OVER (PARTITION BY a.piso ORDER BY a.numero) - 1) / 4 + 1)::int) AS fila,
+           COALESCE(a.columna, (ARRAY[1, 2, 4, 5])[((ROW_NUMBER() OVER (PARTITION BY a.piso ORDER BY a.numero) - 1) % 4 + 1)::int]) AS columna,
+           COALESCE(bp.izquierda, 2) AS izquierda,
+           COALESCE(bp.derecha, 2) AS derecha,
            ta.id AS tipo_asiento_id,
            ta.nombre AS tipo_asiento,
            ROUND($6::numeric * ta.factor_precio, 2) AS precio,
@@ -159,6 +179,7 @@ async function obtenerAsientos(viajeId, subida, bajada) {
     FROM asiento a
     JOIN tipo_asiento ta ON ta.id = a.tipo_asiento_id
       AND ta.cooperativa_id = $2
+    LEFT JOIN bus_piso bp ON bp.bus_id = a.bus_id AND bp.piso = a.piso
     WHERE a.bus_id = $1
     ORDER BY a.piso, a.numero
   `, [

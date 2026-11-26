@@ -1,7 +1,8 @@
 const fs = require('fs')
 const { pool, transaccion } = require('../../config/db')
 const { notificar, notificarOficinistas } = require('../../utils/notificar')
-const { validarCedula } = require('../../utils/cedula')
+const cuentas = require('../cuentas-bancarias/cuentas-bancarias.service')
+const { validarCedulaEcuador, validarNombreCompleto, validarFechaNacimiento, limpiar } = require('../../utils/validaciones')
 
 function errorHttp(mensaje, status, detalles) {
   const error = new Error(mensaje)
@@ -37,8 +38,19 @@ async function obtenerCatalogos() {
     pasajeros: [ { asiento_id, cedula, nombre, tipo_descuento_id (opcional) }, ... ]
   }
   El servidor calcula precios y descuentos: nunca se confía en valores del frontend.
+
+  opciones.vendidoPor (CC-14, venta en ventanilla): el oficinista que vende.
+  En ese caso el pago es en efectivo, la compra queda aprobada y los boletos emitidos,
+  y el viaje debe ser de la cooperativa del oficinista.
 */
-async function crear(clienteId, datos) {
+/*
+  GC-34 - opciones.aBordo (venta del chofer dentro del bus): el viaje debe estar
+  EN CURSO y manejado por ese chofer; el pago es en efectivo y los boletos quedan
+  como "usados" porque el pasajero ya está a bordo.
+*/
+async function crear(clienteId, datos, opciones = {}) {
+  const aBordo = Boolean(opciones.aBordo)
+  const ventanilla = opciones.vendidoPor || null
   const pasajeros = Array.isArray(datos.pasajeros) ? datos.pasajeros : []
   if (!datos.viaje_id || !datos.subida || !datos.bajada || !datos.metodo_pago_id) {
     throw errorHttp('Faltan datos del viaje, del tramo o del método de pago', 400)
@@ -51,16 +63,24 @@ async function crear(clienteId, datos) {
     throw errorHttp('No puedes elegir el mismo asiento dos veces', 400)
   }
   const errores = {}
+  // CC-21: cédula y nombre de cada pasajero.
+  // GC-15: SÍ se permite repetir la cédula (una persona puede comprar dos asientos para ella,
+  // o uno para ella y otro para su mascota, siempre que pague cada pasaje).
   pasajeros.forEach((p, i) => {
-    if (!validarCedula(p.cedula)) errores[`pasajero_${i + 1}`] = `Cédula no válida del pasajero ${i + 1}`
-    else if (!p.nombre?.trim()) errores[`pasajero_${i + 1}`] = `Falta el nombre del pasajero ${i + 1}`
+    const clave = `pasajero_${i + 1}`
+    const errorCedula = validarCedulaEcuador(p.cedula)
+    const errorNombre = validarNombreCompleto(p.nombre)
+    const errorNacimiento = p.fecha_nacimiento ? validarFechaNacimiento(p.fecha_nacimiento) : null
+    if (errorCedula) errores[clave] = `Pasajero ${i + 1}: ${errorCedula.charAt(0).toLowerCase()}${errorCedula.slice(1)}`
+    else if (errorNombre) errores[clave] = `Pasajero ${i + 1}: ${errorNombre.charAt(0).toLowerCase()}${errorNombre.slice(1)}`
+    else if (errorNacimiento) errores[clave] = `Pasajero ${i + 1}: ${errorNacimiento.charAt(0).toLowerCase()}${errorNacimiento.slice(1)}`
   })
   if (Object.keys(errores).length) throw errorHttp('Revisa los datos de los pasajeros', 400, errores)
 
   return transaccion(async (cliente) => {
     // Tramo solicitado: orden de subida y bajada, y precio para asiento normal
     const tramo = await cliente.query(
-      `SELECT v.id, v.fecha::text AS fecha, v.estado, v.bus_id, f.cooperativa_id,
+      `SELECT v.id, v.fecha::text AS fecha, v.estado, v.bus_id, v.chofer_id, f.cooperativa_id,
               po.orden AS orden_subida, pd.orden AS orden_bajada,
               (pd.precio_acumulado - po.precio_acumulado) AS precio_normal
          FROM viaje v
@@ -72,12 +92,34 @@ async function crear(clienteId, datos) {
     )
     const viaje = tramo.rows[0]
     if (!viaje) throw errorHttp('Viaje o tramo no encontrado', 404)
-    if (viaje.estado !== 'programado') throw errorHttp('Este viaje ya no está disponible para la venta', 409)
+    if (aBordo) {
+      if (viaje.estado !== 'en_curso') throw errorHttp('Solo puedes vender a bordo cuando el viaje está en curso', 409)
+      if (viaje.chofer_id !== ventanilla.id) throw errorHttp('Solo el chofer que inició el viaje puede vender a bordo', 403)
+    } else if (viaje.estado !== 'programado') {
+      throw errorHttp('Este viaje ya no está disponible para la venta', 409)
+    }
     const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Guayaquil' })
     if (viaje.fecha < hoy) throw errorHttp('No se pueden comprar boletos de viajes pasados', 409)
+    if (ventanilla && viaje.cooperativa_id !== ventanilla.cooperativa_id) {
+      throw errorHttp('Solo puedes vender boletos de los viajes de tu cooperativa', 403)
+    }
 
-    const metodo = await cliente.query('SELECT id FROM metodo_pago WHERE id = $1 AND activo', [datos.metodo_pago_id])
+    const metodo = await cliente.query('SELECT id, requiere_comprobante FROM metodo_pago WHERE id = $1 AND activo', [datos.metodo_pago_id])
     if (!metodo.rows[0]) throw errorHttp('Método de pago no válido', 400)
+
+    // GC-43: el cliente transfiere o deposita a la cooperativa del viaje: debe tener su cuenta registrada
+    let cuentaCooperativa = null
+    if (!ventanilla && metodo.rows[0].requiere_comprobante) {
+      const coop = await cliente.query(
+        `SELECT nombre, cuenta_banco, cuenta_tipo, cuenta_numero, cuenta_titular, cuenta_identificacion
+           FROM cooperativa WHERE id = $1`,
+        [viaje.cooperativa_id]
+      )
+      if (!coop.rows[0]?.cuenta_numero) {
+        throw errorHttp(`${coop.rows[0]?.nombre || 'La cooperativa'} todavía no registra su cuenta bancaria, así que no recibe pagos por transferencia o depósito. Puedes comprar este viaje en su ventanilla.`, 409)
+      }
+      cuentaCooperativa = cuentas.formatear(coop.rows[0])
+    }
 
     const boletos = []
     for (const p of pasajeros) {
@@ -108,16 +150,17 @@ async function crear(clienteId, datos) {
             'SELECT fecha_nacimiento::text AS fecha_nacimiento FROM usuario WHERE cedula = $1',
             [p.cedula]
           )
-          const nacimiento = registro.rows[0]?.fecha_nacimiento
+          // GC-15: si el pasajero no tiene cuenta, se usa la fecha de nacimiento que ingresó el comprador
+          const nacimiento = registro.rows[0]?.fecha_nacimiento || p.fecha_nacimiento
           if (!nacimiento) {
-            throw errorHttp(`Para el descuento "${tipo.nombre}", el pasajero con cédula ${p.cedula} debe estar registrado`, 400)
+            throw errorHttp(`Para aplicar el descuento "${tipo.nombre}" ingresa la fecha de nacimiento del pasajero con cédula ${p.cedula}`, 400)
           }
           const edad = edadEn(nacimiento, viaje.fecha)
           if (tipo.codigo === 'tercera_edad' && edad < 65) {
-            throw errorHttp(`El pasajero con cédula ${p.cedula} no cumple la edad para tercera edad`, 400)
+            throw errorHttp(`El descuento de tercera edad es para personas de 65 años o más. El pasajero con cédula ${p.cedula} no cumple ese requisito`, 400)
           }
           if (tipo.codigo === 'menor_edad' && edad >= 18) {
-            throw errorHttp(`El pasajero con cédula ${p.cedula} no es menor de edad`, 400)
+            throw errorHttp(`El descuento de menor de edad es para personas de menos de 18 años. El pasajero con cédula ${p.cedula} no cumple ese requisito`, 400)
           }
         }
         // Discapacidad: la verifica el oficinista con el carné al validar el pago
@@ -129,7 +172,7 @@ async function crear(clienteId, datos) {
         asiento_id: Number(p.asiento_id),
         numero_asiento: asiento.rows[0].numero,
         pasajero_cedula: p.cedula,
-        pasajero_nombre: p.nombre.trim(),
+        pasajero_nombre: limpiar(p.nombre),
         tipo_descuento_id: tipoDescuentoId,
         precio_base: precioBase,
         descuento,
@@ -139,10 +182,10 @@ async function crear(clienteId, datos) {
 
     const total = redondear(boletos.reduce((suma, b) => suma + b.precio_final, 0))
     const compra = await cliente.query(
-      `INSERT INTO compra (cliente_id, metodo_pago_id, total, estado_pago)
-       VALUES ($1, $2, $3, 'pendiente')
+      `INSERT INTO compra (cliente_id, metodo_pago_id, total, estado_pago, vendido_por, validado_por, validado_en, a_bordo)
+       VALUES ($1, $2, $3, $4, $5, $5, CASE WHEN $5::int IS NULL THEN NULL ELSE NOW() END, $6)
        RETURNING id, total, estado_pago, creado_en`,
-      [clienteId, datos.metodo_pago_id, total]
+      [clienteId, datos.metodo_pago_id, total, ventanilla ? 'aprobado' : 'pendiente', ventanilla ? ventanilla.id : null, aBordo]
     )
     const compraId = compra.rows[0].id
 
@@ -151,21 +194,34 @@ async function crear(clienteId, datos) {
     for (const b of boletos) {
       const { rows } = await cliente.query(
         `INSERT INTO boleto (compra_id, viaje_id, asiento_id, pasajero_cedula, pasajero_nombre,
-                             tipo_descuento_id, orden_subida, orden_bajada, precio_base, descuento, precio_final)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                             tipo_descuento_id, orden_subida, orden_bajada, precio_base, descuento, precio_final, estado)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
          RETURNING id, codigo, estado`,
         [compraId, viaje.id, b.asiento_id, b.pasajero_cedula, b.pasajero_nombre, b.tipo_descuento_id,
-          viaje.orden_subida, viaje.orden_bajada, b.precio_base, b.descuento, b.precio_final]
+          viaje.orden_subida, viaje.orden_bajada, b.precio_base, b.descuento, b.precio_final,
+          aBordo ? 'usado' : ventanilla ? 'emitido' : 'reservado']
       )
       Object.assign(b, rows[0])
+      // GC-34: quien compra a bordo ya está dentro del bus: queda registrado su abordaje
+      if (aBordo) {
+        await cliente.query('INSERT INTO acceso_pasajero (boleto_id, registrado_por) VALUES ($1, $2)', [rows[0].id, ventanilla.id])
+      }
     }
 
     // Notificación al cliente (CC-11)
-    await notificar(cliente, clienteId, `Compra N.º ${compraId} registrada`,
-      `Reservaste ${boletos.length} asiento(s) por $${total.toFixed(2)}. ` +
-      'Realiza el pago y sube el comprobante desde Mis boletos.')
+    if (!ventanilla) {
+      await notificar(cliente, clienteId, `Compra N.º ${compraId} registrada`,
+        `Reservaste ${boletos.length} asiento(s) por $${total.toFixed(2)}. ` +
+        'Realiza el pago y sube el comprobante desde Mis boletos.')
+    } else if (aBordo && clienteId !== ventanilla.id) {
+      await notificar(cliente, clienteId, `Compra N.º ${compraId} a bordo`,
+        `Compraste ${boletos.length} boleto(s) a bordo del bus, pagados en efectivo.`)
+    } else if (!aBordo && clienteId !== ventanilla.id) {
+      await notificar(cliente, clienteId, `Compra N.º ${compraId} en ventanilla`,
+        `Se emitieron ${boletos.length} boleto(s) pagados en efectivo. Descárgalos desde Mis boletos.`)
+    }
 
-    return { ...compra.rows[0], boletos }
+    return { ...compra.rows[0], boletos, cuenta_cooperativa: cuentaCooperativa }
   })
 }
 
@@ -182,6 +238,10 @@ async function listarMias(clienteId) {
             MIN(v.fecha)::text AS fecha_viaje,
             MIN(f.hora_salida)::text AS hora_salida,
             MIN(coop.nombre) AS cooperativa,
+            -- GC-43: cuenta de la cooperativa a la que se paga la transferencia o el depósito
+            (array_agg(json_build_object('banco', coop.cuenta_banco, 'tipo', coop.cuenta_tipo,
+              'numero', coop.cuenta_numero, 'titular', coop.cuenta_titular,
+              'identificacion', coop.cuenta_identificacion)))[1] AS cuenta_cooperativa,
             MIN(cs.nombre) AS origen,
             MIN(cb.nombre) AS destino
        FROM compra c
@@ -264,4 +324,101 @@ async function subirComprobante(clienteId, compraId, archivo, referencia) {
   return actualizada.rows[0]
 }
 
-module.exports = { obtenerCatalogos, crear, listarMias, subirComprobante }
+/*
+  CC-14: venta en ventanilla. El oficinista vende con pago en efectivo.
+  Si la cédula del primer pasajero es de un cliente registrado, la compra queda en su
+  historial (Mis boletos); si no, queda registrada a nombre del oficinista que vendió.
+*/
+async function venderEnVentanilla(oficinista, datos, opciones = {}) {
+  const efectivo = await pool.query("SELECT id FROM metodo_pago WHERE codigo = 'efectivo' AND activo")
+  if (!efectivo.rows[0]) throw errorHttp('El pago en efectivo no está habilitado', 409)
+
+  const cedula = Array.isArray(datos.pasajeros) ? datos.pasajeros[0]?.cedula : null
+  const registrado = await pool.query(
+    `SELECT u.id FROM usuario u JOIN rol r ON r.id = u.rol_id
+      WHERE u.cedula = $1 AND r.nombre = 'cliente' AND u.activo`,
+    [cedula || '']
+  )
+  const clienteId = registrado.rows[0]?.id || oficinista.id
+
+  return crear(clienteId, { ...datos, metodo_pago_id: efectivo.rows[0].id }, { vendidoPor: oficinista, aBordo: Boolean(opciones.aBordo) })
+}
+
+// GC-34: venta del chofer dentro del bus (misma lógica que la ventanilla, con el viaje en curso)
+const venderABordo = (chofer, datos) => venderEnVentanilla(chofer, datos, { aBordo: true })
+
+/*
+  GC-15: datos de un pasajero ya registrado, para precargarlos en la compra.
+  Solo se devuelve el nombre (nunca correo ni teléfono) y si tiene fecha de nacimiento
+  registrada (para saber si hace falta pedirla en los descuentos por edad).
+*/
+async function buscarPasajero(cedula) {
+  const error = validarCedulaEcuador(cedula)
+  if (error) throw errorHttp(error, 400)
+  const { rows } = await pool.query(
+    `SELECT nombres || ' ' || apellidos AS nombre, (fecha_nacimiento IS NOT NULL) AS tiene_fecha_nacimiento
+       FROM usuario WHERE cedula = $1 AND activo`,
+    [String(cedula).trim()]
+  )
+  return rows[0] ? { registrado: true, ...rows[0] } : { registrado: false }
+}
+
+/*
+  GC-22: viajes de la cooperativa del oficinista para vender en ventanilla.
+  Usa la misma búsqueda del cliente (solo salidas futuras con asientos libres)
+  y deja únicamente los viajes de SU cooperativa.
+*/
+async function viajesVentanilla(oficinista, consulta) {
+  const errores = {}
+  const origen = Number(consulta.origen)
+  const destino = Number(consulta.destino)
+  const pasajeros = consulta.pasajeros ? Number(consulta.pasajeros) : 1
+  if (!Number.isInteger(origen) || origen <= 0) errores.origen = 'Elige el origen'
+  if (!Number.isInteger(destino) || destino <= 0) errores.destino = 'Elige el destino'
+  else if (origen === destino) errores.destino = 'El destino debe ser distinto del origen'
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(consulta.fecha || '')) errores.fecha = 'Elige la fecha del viaje'
+  if (!Number.isInteger(pasajeros) || pasajeros < 1 || pasajeros > 10) errores.pasajeros = 'Puedes vender de 1 a 10 pasajes por venta'
+  if (Object.keys(errores).length) throw errorHttp('Revisa la búsqueda', 400, errores)
+
+  const { buscarViajes } = require('../viajes/viajes.service')
+  return buscarViajes({ origen, destino, fecha: consulta.fecha, pasajeros, cooperativa: oficinista.cooperativa_id })
+}
+
+/*
+  GC-22: cierre de caja del día del oficinista (ventas en efectivo de hoy).
+*/
+async function ventasDelDia(oficinista) {
+  const { rows } = await pool.query(
+    `SELECT COUNT(DISTINCT c.id)::int AS ventas,
+            COUNT(b.id)::int AS boletos,
+            COALESCE(SUM(b.precio_final), 0)::numeric(10,2) AS total
+       FROM compra c
+       JOIN boleto b ON b.compra_id = c.id AND b.estado <> 'anulado'
+      WHERE c.vendido_por = $1
+        AND (c.creado_en AT TIME ZONE 'America/Guayaquil')::date = (NOW() AT TIME ZONE 'America/Guayaquil')::date`,
+    [oficinista.id]
+  )
+  const ultimas = await pool.query(
+    `SELECT c.id, c.total, to_char(c.creado_en AT TIME ZONE 'America/Guayaquil', 'HH24:MI') AS hora,
+            COUNT(b.id)::int AS boletos, MIN(cs.nombre) AS origen, MIN(cd.nombre) AS destino
+       FROM compra c
+       JOIN boleto b ON b.compra_id = c.id
+       JOIN viaje v ON v.id = b.viaje_id
+       JOIN parada ps ON ps.frecuencia_id = v.frecuencia_id AND ps.orden = b.orden_subida
+       JOIN parada pd ON pd.frecuencia_id = v.frecuencia_id AND pd.orden = b.orden_bajada
+       JOIN ciudad cs ON cs.id = ps.ciudad_id
+       JOIN ciudad cd ON cd.id = pd.ciudad_id
+      WHERE c.vendido_por = $1
+        AND (c.creado_en AT TIME ZONE 'America/Guayaquil')::date = (NOW() AT TIME ZONE 'America/Guayaquil')::date
+      GROUP BY c.id
+      ORDER BY c.creado_en DESC
+      LIMIT 8`,
+    [oficinista.id]
+  )
+  return { ...rows[0], total: Number(rows[0].total), ultimas: ultimas.rows.map((u) => ({ ...u, total: Number(u.total) })) }
+}
+
+module.exports = {
+  buscarPasajero, obtenerCatalogos, crear, listarMias, subirComprobante, venderEnVentanilla,
+  viajesVentanilla, ventasDelDia, venderABordo,
+}

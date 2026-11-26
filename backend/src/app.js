@@ -29,9 +29,15 @@ app.get('/api/salud', (req, res) => {
 
 // Tarea 0 - Autenticacion
 app.use('/api/auth', require('./modules/auth/auth.routes'))
+// GC-36 - Mi cuenta: datos propios y cambio de contraseña
+app.use('/api/cuenta', require('./modules/cuenta/cuenta.routes'))
 
 // Tarea 0 - Ciudades
 app.use('/api/ciudades', require('./modules/ciudades/ciudades.routes'))
+
+// GC-13 - Catálogos del administrador: provincias y marcas de buses
+app.use('/api/provincias', require('./modules/provincias/provincias.routes'))
+app.use('/api/marcas', require('./modules/marcas/marcas.routes'))
 // CC-11 - Notificaciones dentro de la aplicacion
 app.use('/api/notificaciones', require('./modules/notificaciones/notificaciones.routes'));
 
@@ -40,11 +46,17 @@ app.use('/api/viajes', require('./modules/viajes/viajes.routes'))
 
 // Modulo de cooperativas
 app.use('/api/cooperativas', require('./modules/cooperativas/cooperativas.routes'))
+// GC-35 - Rutas destacadas (plan del administrador y marca de la cooperativa)
+app.use('/api/destacadas', require('./modules/destacadas/destacadas.routes'))
+// GC-43 - Cuenta bancaria de cada cooperativa (la registra la cooperativa o el administrador)
+app.use('/api/cuentas-bancarias', require('./modules/cuentas-bancarias/cuentas-bancarias.routes'))
 
 // Frente B - Modulo de buses
 app.use('/api/buses', require('./modules/buses/buses.routes'))
 // CC-12 - Configuracion de la aplicacion
 app.use('/api/configuracion', require('./modules/configuracion/configuracion.routes'))
+// CC-16 - Gestion de usuarios
+app.use('/api/usuarios', require('./modules/usuarios/usuarios.routes'))
 
 // Frente B - Tipos de asiento
 app.use('/api/tipos-asiento', require('./modules/tipos-asiento/tipos-asiento.routes'))
@@ -79,8 +91,23 @@ app.use('/api/compras', require('./modules/compras/compras.routes'))
 
 // Frente E - Validacion de pagos (oficinista)
 app.use('/api/pagos', require('./modules/pagos/pagos.routes'))
+
+// GC-19 - Grupos de buses y frecuencias (la hoja de ruta se arma por grupo)
+app.use('/api/grupos', require('./modules/grupos/grupos.routes'))
+
+// CC-24 - Apariencia de cada cooperativa
+app.use('/api/apariencia', require('./modules/apariencia/apariencia.routes'))
+
+// GC-9 - Panel de inicio del personal de la cooperativa
+app.use('/api/panel', require('./modules/panel/panel.routes'))
+
+// GC-18 - Estructura (plantilla) de asientos de cada bus
+app.use('/api/estructura-buses', require('./modules/estructura-buses/estructura-buses.routes'))
+
 // CC-6 - Boletos en PDF con codigo QR
 app.use('/api/boletos', require('./modules/boletos/boletos.routes'))
+// GC-34 - Sección del chofer: viajes, inicio/fin, validación de boletos, venta a bordo e historial
+app.use('/api/chofer', require('./modules/chofer/chofer.routes'))
 
 // ========================================
 // RUTAS NO ENCONTRADAS
@@ -96,42 +123,8 @@ app.use((req, res) => {
 // MANEJADOR DE ERRORES
 // ========================================
 
-app.use((err, req, res, next) => {
-
-  // Registro duplicado en PostgreSQL
-  if (err.code === '23505') {
-    return res.status(409).json({
-      mensaje: 'Ya existe un registro con esos datos'
-    })
-  }
-
-  // Error de clave foranea
-  if (err.code === '23503') {
-    return res.status(409).json({
-      mensaje: 'El registro está relacionado con otros datos'
-    })
-  }
-
-  // Conflicto de asiento vendido
-  if (err.code === '23P01') {
-    return res.status(409).json({
-      mensaje: 'El asiento ya está vendido en ese tramo'
-    })
-  }
-
-  // Registrar errores inesperados
-  if (!err.status) {
-    console.error(err)
-  }
-
-  // Respuesta de error
-  res.status(err.status || 500).json({
-    mensaje: err.status
-      ? err.message
-      : 'Error interno del servidor',
-    detalles: err.detalles
-  })
-})
+// CC-21 - Mensajes de error claros para el usuario final
+app.use(require('./middlewares/errores'))
 
 // ========================================
 // EXPORTAR APLICACION

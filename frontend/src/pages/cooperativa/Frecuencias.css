@@ -1,0 +1,30 @@
+/* GC-21 - Frecuencias: tabla, recorrido y panel de edición */
+.frec__filtros { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 1rem; }
+.frec__buscar { margin: 0; flex: 1; max-width: 420px; }
+.frec__hora { font-size: 1.1rem; font-variant-numeric: tabular-nums; }
+.frec__ruta { display: flex; align-items: center; gap: 0.3rem; font-size: 0.92rem; }
+.frec__ruta + .frec__ruta { color: var(--texto-suave); }
+.frec__resolucion { display: block; font-family: ui-monospace, monospace; font-size: 0.82rem; }
+.frec__vendidos { display: block; margin-top: 0.25rem; font-size: 0.75rem; }
+.frec__acciones { white-space: nowrap; text-align: right; }
+.frec__inactiva td { opacity: 0.65; }
+.frec__modal { width: min(520px, calc(100% - 2rem)); }
+.frec__seccion { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--texto-suave); margin: 1.3rem 0 0.7rem; }
+.frec__seccion:first-of-type { margin-top: 0; }
+.frec__seccion small { text-transform: none; letter-spacing: 0; font-weight: 500; }
+.frec__linea { list-style: none; margin: 0 0 1rem; padding: 0; position: relative; }
+.frec__linea::before { content: ''; position: absolute; left: 7px; top: 10px; bottom: 10px; width: 2px; background: var(--marca-suave); }
+.frec__linea li { position: relative; display: flex; align-items: center; gap: 0.6rem; padding: 0.45rem 0 0.45rem 1.6rem; }
+.frec__linea li::before {
+  content: ''; position: absolute; left: 1px; top: 50%; width: 14px; height: 14px; margin-top: -7px; border-radius: 50%;
+  background: var(--superficie); border: 3px solid var(--marca);
+}
+.frec__linea li:first-child::before, .frec__linea li:last-child::before { background: var(--marca); }
+.frec__linea strong { flex: 1; font-weight: 650; font-size: 0.92rem; }
+.frec__linea span { font-size: 0.82rem; color: var(--texto-suave); white-space: nowrap; }
+.frec__nueva-parada { padding: 0.9rem; border: 1px dashed var(--borde); border-radius: 12px; background: var(--fondo); }
+.frec__nueva-parada .rejilla-3 { align-items: end; }
+.frec__agregar { margin-bottom: 1rem; }
+
+/* GC-35 - Rutas destacadas */
+.frec__destacada { display: flex; width: max-content; margin-top: 0.3rem; }

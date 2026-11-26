@@ -11,8 +11,16 @@ rutas.get('/catalogos', controlador.catalogos)
 // Solo clientes con sesión
 rutas.post('/', autenticar, permitirRoles('cliente'), controlador.crear)
 rutas.get('/mias', autenticar, permitirRoles('cliente'), controlador.listarMias)
+// GC-15: datos de un pasajero registrado (?cedula=) para precargarlos
+rutas.get('/pasajero', autenticar, permitirRoles('cliente', 'oficinista', 'personal_bus'), controlador.buscarPasajero)
 
 // Subir comprobante de pago (campo "comprobante" del formulario)
 rutas.post('/:id/comprobante', autenticar, permitirRoles('cliente'), subirComprobante, controlador.subirComprobante)
+
+// CC-14: venta en ventanilla, pago en efectivo (solo oficinista)
+rutas.post('/ventanilla', autenticar, permitirRoles('oficinista'), controlador.venderEnVentanilla)
+// GC-22: viajes de SU cooperativa (?origen=&destino=&fecha=&pasajeros=) y cierre de caja del día
+rutas.get('/ventanilla/viajes', autenticar, permitirRoles('oficinista'), controlador.viajesVentanilla)
+rutas.get('/ventanilla/hoy', autenticar, permitirRoles('oficinista'), controlador.ventasDelDia)
 
 module.exports = rutas

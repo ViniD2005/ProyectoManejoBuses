@@ -1,12 +1,90 @@
-import { Link, Outlet } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useConfiguracion } from '../hooks/useConfiguracion.js'
-import PieDePagina from '../components/PieDePagina.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
+import PieDePagina from '../components/PieDePagina.jsx'
 import Notificaciones from '../components/Notificaciones.jsx'
+import Icono from '../components/Icono.jsx'
+
+/*
+  Diseño general de la aplicación (CC-19).
+  - Visitantes y clientes: barra superior con el buscador de pasajes.
+  - Personal (admin, cooperativa, oficinista, personal del bus): panel con menú lateral.
+*/
+
+const NOMBRE_ROL = {
+  admin: 'Administrador',
+  cooperativa: 'Cooperativa',
+  oficinista: 'Oficinista',
+  personal_bus: 'Personal del bus',
+  cliente: 'Cliente',
+}
+
+// Menú lateral de cada rol, agrupado por secciones
+const MENU = {
+  admin: [
+    { grupo: 'Administración', enlaces: [
+      { a: '/cooperativas', texto: 'Cooperativas', icono: 'edificio' },
+      { a: '/admin/usuarios', texto: 'Usuarios y roles', icono: 'usuarios' },
+      { a: '/admin/configuracion', texto: 'Configuración', icono: 'ajustes' },
+    ] },
+    // GC-13: catálogos que usan todas las cooperativas
+    { grupo: 'Catálogos', enlaces: [
+      { a: '/admin/ubicaciones', texto: 'Provincias y cantones', icono: 'ubicacion' },
+      { a: '/admin/marcas', texto: 'Marcas de buses', icono: 'bus' },
+    ] },
+  ],
+  cooperativa: [
+    // GC-9: panel de inicio
+    { grupo: 'General', enlaces: [{ a: '/panel', texto: 'Inicio', icono: 'inicio' }] },
+    { grupo: 'Flota', enlaces: [
+      { a: '/buses', texto: 'Buses', icono: 'bus' },
+      { a: '/cooperativa/tipos-asiento', texto: 'Tipos de asiento', icono: 'asiento' },
+      // GC-18: plantilla de asientos de cada bus
+      { a: '/cooperativa/estructura-asientos', texto: 'Estructura de asientos', icono: 'paleta' },
+    ] },
+    { grupo: 'Operación', enlaces: [
+      { a: '/frecuencias', texto: 'Frecuencias', icono: 'reloj' },
+      // GC-19: la hoja de ruta se arma por grupo
+      { a: '/cooperativa/grupos', texto: 'Grupos', icono: 'capas' },
+      { a: '/cooperativa/hoja-ruta', texto: 'Hoja de ruta', icono: 'calendario' },
+    ] },
+    { grupo: 'Mi cooperativa', enlaces: [
+      { a: '/cooperativa/personal', texto: 'Personal', icono: 'usuarios' },
+      { a: '/cooperativa/apariencia', texto: 'Datos y apariencia', icono: 'edificio' },
+    ] },
+  ],
+  oficinista: [
+    // GC-9: panel de inicio
+    { grupo: 'General', enlaces: [{ a: '/panel', texto: 'Inicio', icono: 'inicio' }] },
+    { grupo: 'Ventanilla', enlaces: [
+      { a: '/oficinista/vender', texto: 'Vender boletos', icono: 'boleto' },
+      { a: '/oficinista/pagos', texto: 'Validar pagos', icono: 'tarjeta' },
+    ] },
+  ],
+  personal_bus: [
+    // GC-9: panel de inicio
+    { grupo: 'General', enlaces: [{ a: '/panel', texto: 'Inicio', icono: 'inicio' }] },
+    // GC-34: sección del chofer
+    { grupo: 'En el bus', enlaces: [
+      { a: '/chofer', texto: 'Viajes de hoy', icono: 'bus' },
+      { a: '/chofer/historial', texto: 'Mi historial', icono: 'documento' },
+    ] },
+  ],
+}
+
+const iniciales = (u) => `${u?.nombres?.[0] || ''}${u?.apellidos?.[0] || ''}`.toUpperCase() || 'U'
+
+// Datos de la cooperativa del usuario (los publica TemaCooperativa, CC-24)
+const leerCooperativa = () => (typeof window !== 'undefined' ? window.__aparienciaCooperativa || null : null)
 
 function MainLayout() {
   const { usuario, cerrarSesion } = useAuth()
   const configuracion = useConfiguracion()
+  const navigate = useNavigate()
+  const location = useLocation()
+  const [menuAbierto, setMenuAbierto] = useState(false)
+  const [cooperativa, setCooperativa] = useState(leerCooperativa)
 
   // Recarga la app en /login: así el próximo inicio de sesión
   // no intenta volver a una página de otro rol.
@@ -15,45 +93,200 @@ function MainLayout() {
     window.location.href = '/login'
   }
 
-  return (
-    <div className="layout">
-      <header className="layout__header">
-        <Link to="/" className="layout__marca">
-          {configuracion.logo_url && <img src={configuracion.logo_url} alt="" className="layout__logo" />}
-          {configuracion.nombre_app}
-        </Link>
-        <nav className="layout__nav">
-          {usuario?.rol === 'admin' && (
-            <>
-              <Link to="/cooperativas">Cooperativas</Link>
-              <Link to="/admin/configuracion">Configuración</Link>
-            </>
+  useEffect(() => {
+    const alCambiarApariencia = () => setCooperativa(leerCooperativa())
+    // api.js avisa cuando el servidor rechaza el token (sesión vencida)
+    const alExpirar = () => {
+      cerrarSesion()
+      navigate('/login', { replace: true, state: { expirada: true } })
+    }
+    window.addEventListener('apariencia-cooperativa', alCambiarApariencia)
+    window.addEventListener('sesion-expirada', alExpirar)
+    return () => {
+      window.removeEventListener('apariencia-cooperativa', alCambiarApariencia)
+      window.removeEventListener('sesion-expirada', alExpirar)
+    }
+  }, [cerrarSesion, navigate])
+
+  const marca = (
+    <Link to="/" className="marca">
+      {configuracion.logo_url
+        ? <img src={configuracion.logo_url} alt="" className="marca__logo" />
+        : <span className="marca__icono"><Icono nombre="bus" tam={20} /></span>}
+      <span>{configuracion.nombre_app}</span>
+    </Link>
+  )
+
+  const menu = usuario ? MENU[usuario.rol] : null
+
+  /*
+    GC-16: el personal de una cooperativa trabaja con la identidad de SU
+    cooperativa: su logo (o sus iniciales) y su nombre reemplazan a la marca
+    general en el menú. El enlace lleva a su panel de inicio.
+  */
+  const esCooperativa = Boolean(cooperativa && usuario?.cooperativa_id)
+  const inicialesCooperativa = (cooperativa?.nombre || '')
+    .replace(/^cooperativa\s+(de\s+)?/i, '').split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]).join('').toUpperCase()
+  const marcaCooperativa = esCooperativa && (
+    <Link to="/panel" className="marca marca--cooperativa" title={cooperativa.nombre}>
+      {cooperativa.logo_url
+        ? <img src={cooperativa.logo_url} alt="" className="marca__logo" style={{ background: '#fff', borderRadius: 8, padding: 2 }} />
+        : <span className="marca__icono" style={{ fontWeight: 800, fontSize: '.85rem' }}>{inicialesCooperativa || <Icono nombre="edificio" tam={18} />}</span>}
+      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cooperativa.nombre}</span>
+    </Link>
+  )
+
+  // ── Panel del personal ──────────────────────────────────────────────
+  if (menu) {
+    const actual = menu.flatMap((g) => g.enlaces).find((e) => location.pathname.startsWith(e.a))
+    return (
+      <div className="app">
+        <aside className={`app__lateral ${menuAbierto ? 'abierto' : ''}`} aria-label="Menú principal">
+          <div className="app__lateral-cabecera">
+            {marcaCooperativa || marca}
+            <button type="button" className="btn btn--fantasma btn--icono solo-movil" style={{ color: '#fff' }}
+              onClick={() => setMenuAbierto(false)} aria-label="Cerrar menú">
+              <Icono nombre="cerrar" />
+            </button>
+          </div>
+
+          {esCooperativa && (
+            <div className="app__cooperativa">
+              <div>
+                <strong>{cooperativa.eslogan || NOMBRE_ROL[usuario.rol]}</strong>
+                <span>Vende con {configuracion.nombre_app}</span>
+              </div>
+            </div>
           )}
-          {usuario?.rol === 'cliente' && <Link to="/mis-boletos">Mis boletos</Link>}
-          {usuario?.rol === 'cooperativa' && (
-            <>
-              <Link to="/buses">Buses</Link>
-              <Link to="/cooperativa/tipos-asiento">Tipos de asiento</Link>
-              <Link to="/frecuencias">Frecuencias</Link>
-              <Link to="/cooperativa/hojas-ruta">Hojas de ruta</Link>
-            </>
-          )}
-          {usuario?.rol === 'oficinista' && <Link to="/oficinista/pagos">Validar pagos</Link>}
-          {usuario ? (
-            <>
+
+          <nav className="app__navegacion">
+            {menu.map((seccion) => (
+              <div key={seccion.grupo}>
+                <div className="app__grupo">{seccion.grupo}</div>
+                {seccion.enlaces.map((e) => (
+                  <NavLink key={e.a} to={e.a} onClick={() => setMenuAbierto(false)}
+                    className={({ isActive }) => `app__enlace ${isActive ? 'activo' : ''}`}>
+                    <Icono nombre={e.icono} />
+                    {e.texto}
+                  </NavLink>
+                ))}
+              </div>
+            ))}
+          </nav>
+
+          <div className="app__pie-lateral">
+            {/* GC-36: el nombre abre Mi cuenta */}
+            <NavLink to="/mi-cuenta" className="app__usuario" title="Mi cuenta" onClick={() => setMenuAbierto(false)}>
+              <span className="avatar">{iniciales(usuario)}</span>
+              <div>
+                <strong>{usuario.nombres} {usuario.apellidos}</strong>
+                <span>{NOMBRE_ROL[usuario.rol]} · Mi cuenta</span>
+              </div>
+            </NavLink>
+            <button type="button" className="app__salir" onClick={salir}>
+              <Icono nombre="salir" tam={18} /> Cerrar sesión
+            </button>
+          </div>
+        </aside>
+        {menuAbierto && <div className="app__fondo-movil" onClick={() => setMenuAbierto(false)} />}
+
+        <div className="app__principal">
+          <header className="app__superior">
+            <button type="button" className="btn btn--icono solo-movil" onClick={() => setMenuAbierto(true)} aria-label="Abrir menú">
+              <Icono nombre="menu" />
+            </button>
+            <div className="app__superior-titulo">
+              <span>{NOMBRE_ROL[usuario.rol]} / </span>{actual?.texto || (location.pathname === '/mi-cuenta' ? 'Mi cuenta' : 'Panel')}
+            </div>
+            <div className="app__superior-acciones">
               <Notificaciones />
-              <span>{usuario.nombres} ({usuario.rol})</span>
-              <button type="button" onClick={salir}>Cerrar sesión</button>
-            </>
-          ) : (
-            <Link to="/login">Iniciar sesión</Link>
-          )}
-        </nav>
+            </div>
+          </header>
+          <main className="app__contenido">
+            <Outlet />
+          </main>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Sitio público y clientes ────────────────────────────────────────
+  const anchoCompleto = location.pathname === '/' || location.pathname === '/login' || location.pathname === '/registro'
+  return (
+    <div className="sitio">
+      <header className="sitio__barra">
+        <div className="sitio__barra-interior">
+          {marca}
+          <nav className="sitio__nav">
+            <NavLink to="/viajes" className={({ isActive }) => `sitio__enlace ${isActive ? 'activo' : ''}`}>
+              <Icono nombre="buscar" tam={18} /><span className="oculto-movil">Buscar pasajes</span>
+            </NavLink>
+            {usuario?.rol === 'cliente' && (
+              <NavLink to="/mis-boletos" className={({ isActive }) => `sitio__enlace ${isActive ? 'activo' : ''}`}>
+                <Icono nombre="boleto" tam={18} /><span className="oculto-movil">Mis boletos</span>
+              </NavLink>
+            )}
+            {usuario ? (
+              <>
+                <Notificaciones />
+                <MenuUsuario usuario={usuario} onSalir={salir} />
+              </>
+            ) : (
+              <>
+                <Link to="/login" className="sitio__enlace">Iniciar sesión</Link>
+                <Link to="/registro" className="btn btn-primary btn--sm">Crear cuenta</Link>
+              </>
+            )}
+          </nav>
+        </div>
       </header>
-      <main className="layout__contenido">
+      <main className={`sitio__contenido ${anchoCompleto ? 'sitio__contenido--ancho' : ''}`}>
         <Outlet />
       </main>
       <PieDePagina configuracion={configuracion} />
+    </div>
+  )
+}
+
+// Botón con el nombre del usuario y su menú desplegable
+function MenuUsuario({ usuario, onSalir }) {
+  const [abierto, setAbierto] = useState(false)
+  const caja = useRef(null)
+
+  useEffect(() => {
+    if (!abierto) return
+    const fuera = (e) => { if (caja.current && !caja.current.contains(e.target)) setAbierto(false) }
+    document.addEventListener('mousedown', fuera)
+    return () => document.removeEventListener('mousedown', fuera)
+  }, [abierto])
+
+  return (
+    <div className="menu-usuario" ref={caja}>
+      <button type="button" className="menu-usuario__boton" onClick={() => setAbierto(!abierto)} aria-expanded={abierto}>
+        <span className="avatar">{iniciales(usuario)}</span>
+        <span className="menu-usuario__nombre oculto-movil">{usuario.nombres}</span>
+      </button>
+      {abierto && (
+        <div className="desplegable">
+          <div className="desplegable__cabecera">
+            <strong>{usuario.nombres} {usuario.apellidos}</strong>
+            <span>{usuario.email}</span>
+          </div>
+          <Link to="/mis-boletos" className="desplegable__opcion" onClick={() => setAbierto(false)}>
+            <Icono nombre="boleto" tam={18} /> Mis boletos
+          </Link>
+          <Link to="/viajes" className="desplegable__opcion" onClick={() => setAbierto(false)}>
+            <Icono nombre="buscar" tam={18} /> Buscar pasajes
+          </Link>
+          {/* GC-36 */}
+          <Link to="/mi-cuenta" className="desplegable__opcion" onClick={() => setAbierto(false)}>
+            <Icono nombre="usuario" tam={18} /> Mi cuenta
+          </Link>
+          <button type="button" className="desplegable__opcion desplegable__opcion--peligro" onClick={onSalir}>
+            <Icono nombre="salir" tam={18} /> Cerrar sesión
+          </button>
+        </div>
+      )}
     </div>
   )
 }

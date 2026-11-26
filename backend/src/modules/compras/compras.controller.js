@@ -16,4 +16,18 @@ const subirComprobante = async (req, res) => {
   res.json(await servicio.subirComprobante(req.usuario.id, req.params.id, req.file, req.body.referencia))
 }
 
-module.exports = { catalogos, crear, listarMias, subirComprobante }
+// CC-14: venta en ventanilla (oficinista)
+const venderEnVentanilla = async (req, res) => {
+  res.status(201).json(await servicio.venderEnVentanilla(req.usuario, req.body))
+}
+
+// GC-15: precargar los datos de un pasajero registrado por su cédula
+const buscarPasajero = async (req, res) => {
+  res.json(await servicio.buscarPasajero(req.query.cedula))
+}
+
+// GC-22: viajes de la cooperativa del oficinista y su cierre de caja del día
+const viajesVentanilla = async (req, res) => res.json(await servicio.viajesVentanilla(req.usuario, req.query))
+const ventasDelDia = async (req, res) => res.json(await servicio.ventasDelDia(req.usuario))
+
+module.exports = { catalogos, crear, listarMias, subirComprobante, venderEnVentanilla, buscarPasajero, viajesVentanilla, ventasDelDia }

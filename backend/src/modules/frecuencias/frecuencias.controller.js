@@ -38,6 +38,20 @@ const crear = async (req, res) => {
 }
 
 // ======================================
+// EDITAR FRECUENCIA (GC-21)
+// ======================================
+
+const actualizar = async (req, res) => {
+  res.json(
+    await servicio.actualizar(
+      req.usuario.cooperativa_id,
+      req.params.id,
+      req.body
+    )
+  )
+}
+
+// ======================================
 // CAMBIAR ESTADO DE FRECUENCIA
 // ======================================
 
@@ -59,5 +73,6 @@ module.exports = {
   listar,
   obtener,
   crear,
+  actualizar,
   cambiarEstado
 }

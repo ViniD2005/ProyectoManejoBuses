@@ -1,0 +1,118 @@
+# =====================================================================
+# Pasajes Ecuador — entorno de desarrollo con Docker (CC-18)
+#
+#   docker compose up -d --build    levanta todo (la primera vez tarda)
+#   docker compose logs -f backend  ver los mensajes del backend
+#   docker compose down             apaga todo (LOS DATOS SE CONSERVAN)
+#   docker compose down -v          apaga y BORRA la base (vuelve a cargar los scripts)
+#
+# Servicios:
+#   Frontend  http://localhost:5173
+#   Backend   http://localhost:3000/api
+#   pgAdmin   http://localhost:5050   (admin@admin.com / admin)
+#   MailHog   http://localhost:8025   (bandeja donde llegan TODOS los correos de prueba, GC-12)
+#   Postgres  localhost:5433          (postgres / postgres)  <- 5433 para no chocar con el Postgres instalado
+# =====================================================================
+name: pasajes-ecuador
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: buses_db
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      TZ: America/Guayaquil
+      PGTZ: America/Guayaquil
+    command: ["postgres", "-c", "timezone=America/Guayaquil"]
+    ports:
+      - "5433:5432"
+    volumes:
+      # Aquí viven los datos: sobreviven a reinicios y a "docker compose down"
+      - datos_postgres:/var/lib/postgresql/data
+      # Solo la PRIMERA vez (volumen vacío) se ejecutan los scripts en orden: 001, 002, 003…
+      - ./backend/database:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d buses_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      mailhog:
+        condition: service_started
+    environment:
+      PORT: 3000
+      FRONTEND_URL: http://localhost:5173
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: buses_db
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      JWT_SECRET: ${JWT_SECRET:-clave_de_desarrollo_cambiala_en_el_archivo_env}
+      TZ: America/Guayaquil
+      # GC-12: los correos (verificación y recuperación) se envían a MailHog
+      SMTP_HOST: mailhog
+      SMTP_PORT: 1025
+      SMTP_FROM: no-responder@pasajes.ec
+    ports:
+      - "3000:3000"
+    volumes:
+      # El código se edita en tu PC y el backend se reinicia solo (nodemon)
+      - ./backend/src:/app/src
+      # Fotos de buses, logos y comprobantes subidos
+      - ./backend/uploads:/app/uploads
+    command: ["npx", "nodemon", "--legacy-watch", "src/server.js"]
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      VITE_PROXY_TARGET: http://backend:3000
+      VITE_USE_POLLING: "true"
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      # node_modules queda dentro del contenedor (no se mezcla con el de Windows)
+      - /app/node_modules
+    command: ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+
+  # GC-12: servidor de correo FALSO para desarrollo. Atrapa los correos que envía
+  # el backend (ninguno sale a internet) y los muestra en http://localhost:8025
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    platform: linux/amd64
+    restart: unless-stopped
+    ports:
+      - "1025:1025"   # SMTP: aquí envía el backend
+      - "8025:8025"   # Bandeja web para ver los correos
+
+  pgadmin:
+    image: dpage/pgadmin4
+    restart: unless-stopped
+    depends_on:
+      - db
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+    ports:
+      - "5050:80"
+    volumes:
+      - datos_pgadmin:/var/lib/pgadmin
+      # Deja registrado el servidor "Pasajes Ecuador" (contraseña: postgres)
+      - ./docker/pgadmin/servers.json:/pgadmin4/servers.json:ro
+
+volumes:
+  datos_postgres:
+  datos_pgadmin:

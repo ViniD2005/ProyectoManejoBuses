@@ -1,30 +1,47 @@
+
 import { Routes, Route } from 'react-router-dom'
 import MainLayout from './layouts/MainLayout.jsx'
 import RutaProtegida from './components/RutaProtegida.jsx'
 import Inicio from './pages/Inicio.jsx'
 import NoEncontrado from './pages/NoEncontrado.jsx'
 
+
 // Tarea 0 - Autenticacion
 import Login from './pages/auth/Login.jsx'
 import Registro from './pages/auth/Registro.jsx'
+// GC-12: verificación de correo y recuperación de contraseña
+import VerificarCorreo from './pages/auth/VerificarCorreo.jsx'
+import OlvideContrasena from './pages/auth/OlvideContrasena.jsx'
+import RestablecerContrasena from './pages/auth/RestablecerContrasena.jsx'
 
 // Frente A - Administracion
 import Cooperativas from './pages/admin/Cooperativas.jsx'
 import Configuracion from './pages/admin/Configuracion.jsx'
+import Usuarios from './pages/admin/Usuarios.jsx'
+// GC-13 - Catálogos del administrador
+import Ubicaciones from './pages/admin/Ubicaciones.jsx'
+import Marcas from './pages/admin/Marcas.jsx'
 
 // Frente E - Panel del oficinista
 import ValidarPagos from './pages/oficinista/ValidarPagos.jsx'
+import VenderBoletos from './pages/oficinista/VenderBoletos.jsx'
 
 // Frente B - Flota
 import Buses from './pages/Buses.jsx'
 import TiposAsiento from './pages/cooperativa/TiposAsiento.jsx'
+// GC-18 - Estructura (plantilla) de asientos de cada bus
+import EstructuraBus from './pages/cooperativa/EstructuraBus.jsx'
 
 // Frente C - Operacion
 import Frecuencias from './pages/cooperativa/Frecuencias.jsx'
-import HojasRuta from './pages/cooperativa/HojasRuta.jsx'
+// GC-19 - Grupos de buses y frecuencias + hoja de ruta por grupo
+import Grupos from './pages/cooperativa/Grupos.jsx'
+import HojaRuta from './pages/cooperativa/HojaRuta.jsx'
 
 // Frente E - Mis boletos
 import MisBoletos from './pages/cliente/MisBoletos.jsx'
+// GC-36 - Mi cuenta (todos los roles)
+import MiCuenta from './pages/cuenta/MiCuenta.jsx'
 
 // Frente D - Busqueda de viajes y asientos
 import BuscarViajes from './pages/cliente/BuscarViajes.jsx'
@@ -34,6 +51,14 @@ import SeleccionAsientos from './pages/cliente/SeleccionAsientos.jsx'
 
 // Frente E - Compra de boletos
 import Comprar from './pages/cliente/Comprar.jsx'
+// CC-15 - Personal del bus
+import ViajesHoy from './pages/chofer/ViajesHoy.jsx'
+import ViajeEnCurso from './pages/chofer/ViajeEnCurso.jsx'
+import HistorialChofer from './pages/chofer/Historial.jsx'
+// CC-24 - Apariencia de cada cooperativa
+import MiCooperativa from './pages/cooperativa/MiCooperativa.jsx'
+// GC-9 - Panel de inicio del personal de la cooperativa
+import PanelInicio from './pages/panel/PanelInicio.jsx'
 
 function App() {
   return (
@@ -45,26 +70,49 @@ function App() {
         {/* Tarea 0 - Autenticacion */}
         <Route path="/login" element={<Login />} />
         <Route path="/registro" element={<Registro />} />
+        <Route path="/verificar-correo" element={<VerificarCorreo />} />
+        <Route path="/olvide-contrasena" element={<OlvideContrasena />} />
+        <Route path="/restablecer-contrasena" element={<RestablecerContrasena />} />
 
         {/* Frente A - Administracion (solo admin) */}
         <Route element={<RutaProtegida roles={['admin']} />}>
           <Route path="/cooperativas" element={<Cooperativas />} />
           <Route path="/admin/configuracion" element={<Configuracion />} />
+          <Route path="/admin/usuarios" element={<Usuarios />} />
+          <Route path="/admin/ubicaciones" element={<Ubicaciones />} />
+          <Route path="/admin/marcas" element={<Marcas />} />
         </Route>
 
         {/* Frente E - Oficinista (solo oficinista) */}
         <Route element={<RutaProtegida roles={['oficinista']} />}>
           <Route path="/oficinista/pagos" element={<ValidarPagos />} />
+          <Route path="/oficinista/vender" element={<VenderBoletos />} />
         </Route>
 
         {/* Frentes B y C - Panel de la cooperativa (solo cooperativa) */}
         <Route element={<RutaProtegida roles={['cooperativa']} />}>
           <Route path="/buses" element={<Buses />} />
+          <Route path="/cooperativa/personal" element={<Usuarios />} />
           <Route path="/cooperativa/tipos-asiento" element={<TiposAsiento />} />
+          {/* GC-18 - Estructura (plantilla) de asientos de cada bus */}
+          <Route path="/cooperativa/estructura-asientos" element={<EstructuraBus />} />
           <Route path="/frecuencias" element={<Frecuencias />} />
-          <Route path="/cooperativa/hojas-ruta" element={<HojasRuta />} />
+          <Route path="/cooperativa/grupos" element={<Grupos />} />
+          <Route path="/cooperativa/hoja-ruta" element={<HojaRuta />} />
+          <Route path="/cooperativa/apariencia" element={<MiCooperativa />} />
         </Route>
 
+        {/* GC-9 - Panel de inicio del personal de la cooperativa */}
+        <Route element={<RutaProtegida roles={['cooperativa', 'oficinista', 'personal_bus']} />}>
+          <Route path="/panel" element={<PanelInicio />} />
+        </Route>
+        
+        {/* GC-34 - Sección del chofer (solo personal_bus) */}
+        <Route element={<RutaProtegida roles={['personal_bus']} />}>
+          <Route path="/chofer" element={<ViajesHoy />} />
+          <Route path="/chofer/viaje/:id" element={<ViajeEnCurso />} />
+          <Route path="/chofer/historial" element={<HistorialChofer />} />
+        </Route>
         {/* Frente E - Mis boletos (solo cliente) */}
         <Route element={<RutaProtegida roles={['cliente']} />}>
           <Route path="/mis-boletos" element={<MisBoletos />} />
@@ -79,6 +127,11 @@ function App() {
         {/* Frente E - Compra (solo cliente) */}
         <Route element={<RutaProtegida roles={['cliente']} />}>
           <Route path="/comprar" element={<Comprar />} />
+        </Route>
+
+        {/* GC-36 - Mi cuenta (cualquier usuario con sesión) */}
+        <Route element={<RutaProtegida />}>
+          <Route path="/mi-cuenta" element={<MiCuenta />} />
         </Route>
       </Route>
 

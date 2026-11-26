@@ -7,9 +7,10 @@ const AuthContext = createContext(null)
 // Página a la que va cada rol después de iniciar sesión
 export const INICIO_POR_ROL = {
   admin: '/cooperativas',
-  cooperativa: '/cooperativa/tipos-asiento',
-  oficinista: '/oficinista/pagos',
-  personal_bus: '/',
+  // GC-9: el personal de una cooperativa entra a su panel de inicio
+  cooperativa: '/panel',
+  oficinista: '/panel',
+  personal_bus: '/panel',
   cliente: '/',
 }
 
@@ -37,9 +38,10 @@ export function AuthProvider({ children }) {
     return guardarSesion(data)
   }
 
+  // GC-12: registrarse ya NO inicia sesión; primero se confirma el correo
   const registrarse = async (datos) => {
     const { data } = await api.post('/auth/registro', datos)
-    return guardarSesion(data)
+    return data
   }
 
   const cerrarSesion = () => {

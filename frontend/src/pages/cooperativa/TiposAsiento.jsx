@@ -1,185 +1,176 @@
-import { useState, useEffect } from 'react';
-import api from '../../services/api';
+import { useState, useEffect } from 'react'
+import api from '../../services/api'
 
+const VACIO = { nombre: '', factor_precio: '1.00' }
+
+// Ejemplo del precio de un pasaje de $10 con este factor
+const ejemplo = (factor) => `$${(10 * (Number(factor) || 0)).toFixed(2)}`
+
+// Tipos de asiento de la cooperativa y su factor de precio (rediseño CC-20)
 export default function TiposAsiento() {
-  const [tipos, setTipos] = useState([]);
-  const [cargando, setCargando] = useState(true);
-  const [error, setError] = useState('');
-  const [mensaje, setMensaje] = useState('');
+  const [tipos, setTipos] = useState([])
+  const [cargando, setCargando] = useState(true)
+  const [error, setError] = useState('')
+  const [mensaje, setMensaje] = useState('')
+  const [form, setForm] = useState(VACIO)
+  const [errores, setErrores] = useState({})
+  const [idEditar, setIdEditar] = useState(null)
+  const [porEliminar, setPorEliminar] = useState(null)
+  const [guardando, setGuardando] = useState(false)
 
-  // Estado del formulario para crear/editar
-  const [modoEdicion, setModoEdicion] = useState(false);
-  const [idEditar, setIdEditar] = useState(null);
-  const [nombre, setNombre] = useState('');
-  const [factorPrecio, setFactorPrecio] = useState('1.00');
-
-  const cargarTipos = async () => {
-    try {
-      setCargando(true);
-      setError('');
-      const respuesta = await api.get('/tipos-asiento');
-      setTipos(respuesta.data);
-    } catch (err) {
-      setError(err.response?.data?.mensaje || 'Error al cargar los tipos de asiento');
-    } finally {
-      setCargando(false);
-    }
-  };
-
-  // Carga inicial (cargando ya empieza en true; se actualiza al responder la API)
-  useEffect(() => {
+  const cargarTipos = () =>
     api.get('/tipos-asiento')
       .then((respuesta) => setTipos(respuesta.data))
-      .catch((err) => setError(err.response?.data?.mensaje || 'Error al cargar los tipos de asiento'))
-      .finally(() => setCargando(false));
-  }, []);
+      .catch((err) => setError(err.response?.data?.mensaje || 'No pudimos cargar los tipos de asiento'))
+      .finally(() => setCargando(false))
+
+  useEffect(() => {
+    cargarTipos()
+  }, [])
 
   const limpiarFormulario = () => {
-    setNombre('');
-    setFactorPrecio('1.00');
-    setModoEdicion(false);
-    setIdEditar(null);
-  };
+    setForm(VACIO)
+    setErrores({})
+    setIdEditar(null)
+  }
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    setMensaje('');
+  const cambiar = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value })
+    setErrores({ ...errores, [e.target.name]: '' })
+  }
 
+  const guardar = async (e) => {
+    e.preventDefault()
+    setError('')
+    setMensaje('')
+    const locales = {}
+    const nombre = form.nombre.trim().replace(/\s+/g, ' ')
+    if (nombre.length < 3) locales.nombre = 'Escribe un nombre de al menos 3 caracteres, por ejemplo "VIP"'
+    else if (/[<>{}]/.test(nombre)) locales.nombre = 'El nombre contiene caracteres no permitidos'
+    // GC-33: no se repite el nombre (sin importar mayúsculas)
+    else if (tipos.some((t) => t.id !== idEditar && t.nombre.trim().toLowerCase() === nombre.toLowerCase())) locales.nombre = 'Ya tienes un tipo de asiento con ese nombre'
+    const factor = Number(form.factor_precio)
+    if (!factor || factor < 0.5 || factor > 3) locales.factor_precio = 'El factor debe estar entre 0.50 y 3.00'
+    if (Object.keys(locales).length) return setErrores(locales)
+
+    setGuardando(true)
     try {
-      if (modoEdicion) {
-        await api.put(`/tipos-asiento/${idEditar}`, {
-          nombre,
-          factor_precio: parseFloat(factorPrecio)
-        });
-        setMensaje('Tipo de asiento actualizado correctamente');
+      const datos = { nombre, factor_precio: factor }
+      if (idEditar) {
+        await api.put(`/tipos-asiento/${idEditar}`, datos)
+        setMensaje(`El tipo "${datos.nombre}" se actualizó correctamente`)
       } else {
-        await api.post('/tipos-asiento', {
-          nombre,
-          factor_precio: parseFloat(factorPrecio)
-        });
-        setMensaje('Tipo de asiento registrado correctamente');
+        await api.post('/tipos-asiento', datos)
+        setMensaje(`El tipo "${datos.nombre}" se registró correctamente`)
       }
-
-      limpiarFormulario();
-      cargarTipos();
+      limpiarFormulario()
+      cargarTipos()
     } catch (err) {
-      setError(err.response?.data?.mensaje || 'Error al guardar el tipo de asiento');
+      setError(err.response?.data?.mensaje || 'No pudimos guardar el tipo de asiento')
+      setErrores(err.response?.data?.detalles || {})
+    } finally {
+      setGuardando(false)
     }
-  };
+  }
 
-  const handleEditar = (tipo) => {
-    setModoEdicion(true);
-    setIdEditar(tipo.id);
-    setNombre(tipo.nombre);
-    setFactorPrecio(tipo.factor_precio);
-  };
+  const editar = (tipo) => {
+    setIdEditar(tipo.id)
+    setForm({ nombre: tipo.nombre, factor_precio: Number(tipo.factor_precio).toFixed(2) })
+    setErrores({})
+    setMensaje('')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
-  const handleEliminar = async (id) => {
-    if (!window.confirm('¿Estás seguro de eliminar este tipo de asiento?')) return;
-
+  const eliminar = async () => {
+    const tipo = porEliminar
+    setPorEliminar(null)
     try {
-      setError('');
-      setMensaje('');
-      await api.delete(`/tipos-asiento/${id}`);
-      setMensaje('Tipo de asiento eliminado correctamente');
-      cargarTipos();
+      setError('')
+      setMensaje('')
+      await api.delete(`/tipos-asiento/${tipo.id}`)
+      setMensaje(`El tipo "${tipo.nombre}" se eliminó`)
+      cargarTipos()
     } catch (err) {
-      setError(err.response?.data?.mensaje || 'Error al eliminar el tipo de asiento');
+      setError(err.response?.data?.mensaje || 'No pudimos eliminar el tipo de asiento')
     }
-  };
+  }
 
   return (
-    <div style={{ padding: '20px', maxWidth: '900px', margin: '0 auto' }}>
-      <h2>Gestión de Tipos de Asiento</h2>
-      <p>Define las categorías de asientos de tu flota y sus factores multiplicadores de precio.</p>
-
-      {error && <div style={{ padding: '10px', backgroundColor: '#fee2e2', color: '#991b1b', borderRadius: '6px', marginBottom: '15px' }}>{error}</div>}
-      {mensaje && <div style={{ padding: '10px', backgroundColor: '#dcfce7', color: '#166534', borderRadius: '6px', marginBottom: '15px' }}>{mensaje}</div>}
-
-      {/* Formulario */}
-      <form onSubmit={handleSubmit} style={{ background: '#f9fafb', padding: '20px', borderRadius: '8px', marginBottom: '25px', border: '1px solid #e5e7eb' }}>
-        <h3>{modoEdicion ? 'Editar Tipo de Asiento' : 'Nuevo Tipo de Asiento'}</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
-          <div>
-            <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Nombre del Tipo:</label>
-            <input
-              type="text"
-              value={nombre}
-              onChange={(e) => setNombre(e.target.value)}
-              placeholder="Ej. Normal, VIP, Cama"
-              required
-              style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
-            />
-          </div>
-          <div>
-            <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Factor de Precio:</label>
-            <input
-              type="number"
-              step="0.01"
-              min="0.50"
-              max="3.00"
-              value={factorPrecio}
-              onChange={(e) => setFactorPrecio(e.target.value)}
-              required
-              style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
-            />
-            <small style={{ color: '#6b7280' }}>1.00 = Precio base, 1.35 = 35% más costoso</small>
-          </div>
+    <div className="container">
+      <div className="pagina-encabezado">
+        <div>
+          <span className="etiqueta-seccion">Flota</span>
+          <h1>Tipos de asiento</h1>
+          <p>Define las categorías de asientos de tus buses. El factor multiplica el precio del tramo.</p>
         </div>
+      </div>
 
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button type="submit" style={{ padding: '8px 16px', backgroundColor: 'var(--color-primario, #2563eb)', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
-            {modoEdicion ? 'Actualizar' : 'Guardar'}
-          </button>
-          {modoEdicion && (
-            <button type="button" onClick={limpiarFormulario} style={{ padding: '8px 16px', backgroundColor: '#6b7280', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
-              Cancelar
-            </button>
+      {error && <div className="alerta alerta--error" role="alert">{error}</div>}
+      {mensaje && <div className="alerta alerta--exito" role="status">{mensaje}</div>}
+
+      <div className="rejilla-2" style={{ alignItems: 'start' }}>
+        <form onSubmit={guardar} className="card" noValidate style={{ marginBottom: 0 }}>
+          <div className="card-body">
+            <h2>{idEditar ? 'Editar tipo de asiento' : 'Nuevo tipo de asiento'}</h2>
+            <div className={`campo ${errores.nombre ? 'campo--error' : ''}`}>
+              <label className="campo__etiqueta" htmlFor="nombre">Nombre</label>
+              <input id="nombre" name="nombre" value={form.nombre} onChange={cambiar} placeholder="Ej. Normal, VIP, Semicama" maxLength={40} />
+              {errores.nombre && <span className="campo__error">{errores.nombre}</span>}
+            </div>
+            <div className={`campo ${errores.factor_precio ? 'campo--error' : ''}`}>
+              <label className="campo__etiqueta" htmlFor="factor_precio">Factor de precio</label>
+              <input id="factor_precio" name="factor_precio" type="number" step="0.05" min="0.5" max="3"
+                value={form.factor_precio} onChange={cambiar} />
+              {errores.factor_precio
+                ? <span className="campo__error">{errores.factor_precio}</span>
+                : <span className="campo__ayuda">Un pasaje de $10.00 costará <strong>{ejemplo(form.factor_precio)}</strong> en este tipo de asiento.</span>}
+            </div>
+            <div className="fila">
+              <button type="submit" className="btn btn-primary" disabled={guardando}>
+                {guardando ? 'Guardando…' : idEditar ? 'Guardar cambios' : 'Agregar tipo'}
+              </button>
+              {idEditar && <button type="button" className="btn" onClick={limpiarFormulario}>Cancelar</button>}
+            </div>
+          </div>
+        </form>
+
+        <div>
+          {cargando && <div className="cargando"><span className="giro" /> Cargando tipos de asiento…</div>}
+          {!cargando && tipos.length === 0 && (
+            <div className="vacio">
+              <h3>Aún no tienes tipos de asiento</h3>
+              <span>Crea al menos uno (por ejemplo "Normal") antes de registrar tus buses.</span>
+            </div>
           )}
+          <div style={{ display: 'grid', gap: '1rem' }}>
+            {tipos.map((tipo) => (
+              <article key={tipo.id} className="card" style={{ marginBottom: 0, outline: idEditar === tipo.id ? '2px solid var(--marca, var(--color-primario))' : 'none' }}>
+                <div className="card-body fila fila--entre">
+                  <div>
+                    <h3 style={{ margin: 0 }}>{tipo.nombre}</h3>
+                    <span className="texto-suave" style={{ fontSize: '.86rem' }}>
+                      {Number(tipo.factor_precio) === 1 ? 'Precio base' : `${Math.round((Number(tipo.factor_precio) - 1) * 100)} % ${Number(tipo.factor_precio) > 1 ? 'más' : 'menos'} que el precio base`}
+                    </span>
+                  </div>
+                  <strong style={{ fontSize: '1.6rem', letterSpacing: '-.02em' }}>×{Number(tipo.factor_precio).toFixed(2)}</strong>
+                  <div className="fila" style={{ width: '100%' }}>
+                    <button type="button" className="btn btn-sm" onClick={() => editar(tipo)}>Editar</button>
+                    {porEliminar?.id === tipo.id ? (
+                      <>
+                        <span className="texto-suave" style={{ fontSize: '.86rem' }}>¿Eliminar este tipo?</span>
+                        <button type="button" className="btn btn-sm btn-danger" onClick={eliminar}>Sí, eliminar</button>
+                        <button type="button" className="btn btn-sm" onClick={() => setPorEliminar(null)}>No</button>
+                      </>
+                    ) : (
+                      <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => setPorEliminar(tipo)}>Eliminar</button>
+                    )}
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
         </div>
-      </form>
-
-      {/* Lista / Tabla */}
-      {cargando ? (
-        <p>Cargando tipos de asiento...</p>
-      ) : (
-        <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #e5e7eb' }}>
-          <thead>
-            <tr style={{ backgroundColor: '#f3f4f6', textAlign: 'left' }}>
-              <th style={{ padding: '10px', borderBottom: '1px solid #e5e7eb' }}>ID</th>
-              <th style={{ padding: '10px', borderBottom: '1px solid #e5e7eb' }}>Nombre</th>
-              <th style={{ padding: '10px', borderBottom: '1px solid #e5e7eb' }}>Factor de Precio</th>
-              <th style={{ padding: '10px', borderBottom: '1px solid #e5e7eb' }}>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {tipos.length === 0 ? (
-              <tr>
-                <td colSpan="4" style={{ padding: '15px', textAlign: 'center', color: '#6b7280' }}>
-                  No hay tipos de asiento registrados para tu cooperativa.
-                </td>
-              </tr>
-            ) : (
-              tipos.map((tipo) => (
-                <tr key={tipo.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                  <td style={{ padding: '10px' }}>{tipo.id}</td>
-                  <td style={{ padding: '10px', fontWeight: 'bold' }}>{tipo.nombre}</td>
-                  <td style={{ padding: '10px' }}>x{parseFloat(tipo.factor_precio).toFixed(2)}</td>
-                  <td style={{ padding: '10px', display: 'flex', gap: '8px' }}>
-                    <button onClick={() => handleEditar(tipo)} style={{ padding: '4px 8px', backgroundColor: '#f59e0b', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
-                      Editar
-                    </button>
-                    <button onClick={() => handleEliminar(tipo.id)} style={{ padding: '4px 8px', backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
-                      Eliminar
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      )}
+      </div>
     </div>
-  );
+  )
 }

@@ -1,20 +1,23 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import api from '../services/api.js'
+import Icono from './Icono.jsx'
 
-const estilos = {
-  contenedor: { position: 'relative' },
-  boton: { position: 'relative', background: 'transparent', border: '1px solid #fff', color: '#fff', borderRadius: 6, padding: '2px 10px', cursor: 'pointer' },
-  globo: { position: 'absolute', top: -8, right: -8, background: '#e8a317', color: '#1f2a33', borderRadius: 10, padding: '0 6px', fontSize: 12, fontWeight: 700 },
-  panel: { position: 'absolute', right: 0, top: '120%', width: 340, maxHeight: 420, overflowY: 'auto', background: '#fff', color: '#1f2a33', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.2)', zIndex: 20 },
-  cabecera: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderBottom: '1px solid #e2e8ec' },
-  item: { padding: '10px 12px', borderBottom: '1px solid #eef2f4', cursor: 'pointer' },
-  vacio: { padding: 12, color: '#5b6b76' },
+// "hace 5 min", "ayer", "12 nov" — fecha relativa fácil de leer
+function haceCuanto(fecha) {
+  const minutos = Math.round((Date.now() - new Date(fecha).getTime()) / 60000)
+  if (minutos < 1) return 'Ahora'
+  if (minutos < 60) return `Hace ${minutos} min`
+  const horas = Math.round(minutos / 60)
+  if (horas < 24) return `Hace ${horas} h`
+  if (horas < 48) return 'Ayer'
+  return new Date(fecha).toLocaleDateString('es-EC', { day: 'numeric', month: 'short' })
 }
 
-// Campana con las notificaciones del usuario (CC-11). Se actualiza cada 30 segundos.
+// Campana con las notificaciones del usuario (CC-11, rediseño CC-19). Se actualiza cada 30 segundos.
 function Notificaciones() {
   const [datos, setDatos] = useState({ no_leidas: 0, notificaciones: [] })
   const [abierto, setAbierto] = useState(false)
+  const caja = useRef(null)
 
   const cargar = () =>
     api.get('/notificaciones')
@@ -26,6 +29,14 @@ function Notificaciones() {
     const intervalo = setInterval(cargar, 30000)
     return () => clearInterval(intervalo)
   }, [])
+
+  // Cierra el panel al hacer clic fuera
+  useEffect(() => {
+    if (!abierto) return
+    const fuera = (e) => { if (caja.current && !caja.current.contains(e.target)) setAbierto(false) }
+    document.addEventListener('mousedown', fuera)
+    return () => document.removeEventListener('mousedown', fuera)
+  }, [abierto])
 
   const marcarLeida = async (notificacion) => {
     if (notificacion.leida) return
@@ -39,30 +50,43 @@ function Notificaciones() {
   }
 
   return (
-    <div style={estilos.contenedor}>
-      <button type="button" style={estilos.boton} onClick={() => setAbierto(!abierto)}
-        aria-label={`Notificaciones (${datos.no_leidas} sin leer)`}>
-        🔔
-        {datos.no_leidas > 0 && <span style={estilos.globo}>{datos.no_leidas}</span>}
+    <div className="notif" ref={caja}>
+      <button type="button" className="notif__boton" onClick={() => setAbierto(!abierto)}
+        aria-label={`Notificaciones (${datos.no_leidas} sin leer)`} aria-expanded={abierto}>
+        <Icono nombre="campana" />
+        {datos.no_leidas > 0 && <span className="notif__globo">{datos.no_leidas > 9 ? '9+' : datos.no_leidas}</span>}
       </button>
 
       {abierto && (
-        <div style={estilos.panel}>
-          <div style={estilos.cabecera}>
+        <div className="notif__panel">
+          <div className="notif__cabecera">
             <strong>Notificaciones</strong>
             {datos.no_leidas > 0 && (
-              <button type="button" onClick={marcarTodas}>Marcar todas como leídas</button>
+              <button type="button" className="btn btn--fantasma btn--sm" onClick={marcarTodas}>
+                Marcar todas como leídas
+              </button>
             )}
           </div>
-          {datos.notificaciones.length === 0 && <p style={estilos.vacio}>No tienes notificaciones.</p>}
-          {datos.notificaciones.map((n) => (
-            <div key={n.id} style={{ ...estilos.item, background: n.leida ? '#fff' : '#eef6fb' }}
-              onClick={() => marcarLeida(n)}>
-              <strong>{n.titulo}</strong>
-              <p style={{ margin: '4px 0' }}>{n.mensaje}</p>
-              <small style={{ color: '#5b6b76' }}>{new Date(n.creado_en).toLocaleString('es-EC')}</small>
-            </div>
-          ))}
+          <div className="notif__lista">
+            {datos.notificaciones.length === 0 && (
+              <div className="vacio" style={{ border: 0, borderRadius: 0 }}>
+                <span className="vacio__icono"><Icono nombre="campana" /></span>
+                <strong>Todo al día</strong>
+                <span>Aquí verás avisos de tus compras y viajes.</span>
+              </div>
+            )}
+            {datos.notificaciones.map((n) => (
+              <button type="button" key={n.id} className={`notif__item ${n.leida ? '' : 'notif__item--nueva'}`}
+                onClick={() => marcarLeida(n)}>
+                <span className="notif__punto" />
+                <span>
+                  <span className="notif__titulo">{n.titulo}</span>
+                  <span className="notif__texto">{n.mensaje}</span>
+                  <span className="notif__fecha">{haceCuanto(n.creado_en)}</span>
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
       )}
     </div>

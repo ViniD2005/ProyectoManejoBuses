@@ -16,4 +16,12 @@ const cambiarEstado = async (req, res) => {
   res.json(await servicio.cambiarEstado(req.usuario.cooperativa_id, req.params.id, req.body.activo))
 }
 
-module.exports = { listar, crear, actualizar, cambiarEstado }
+// CC-17: subir la foto del bus
+const actualizarFoto = async (req, res) => {
+  res.json(await servicio.actualizarFoto(req.usuario.cooperativa_id, req.params.id, req.file))
+}
+
+// GC-20: servicios a bordo que se pueden marcar
+const servicios = (req, res) => res.json(servicio.servicios())
+
+module.exports = { listar, crear, actualizar, cambiarEstado, actualizarFoto, servicios }
