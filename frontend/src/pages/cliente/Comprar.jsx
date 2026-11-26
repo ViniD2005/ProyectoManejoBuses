@@ -208,10 +208,12 @@ function Comprar() {
           <div className="viajes__tarjeta">
             <h2>Paga y sube tu comprobante</h2>
             <p>Haz la transferencia o el depósito{metodo ? ` (${metodo.nombre})` : ''} por <strong>{dinero(compra.total)}</strong> a esta cuenta:</p>
+            {/* GC-37: la reserva sin comprobante vence a los 30 minutos */}
+            <p className="viajes__aviso" style={{ margin: '0 0 .75rem' }}>Tienes <strong>30 minutos</strong> para subir el comprobante. Si no lo subes a tiempo, la reserva vence y los asientos se liberan.</p>
             <div className="cuenta">{cuentaBancaria || CUENTA_POR_DEFECTO}</div>
             <SubirComprobante compraId={compra.id} alSubir={() => { setComprobanteEnviado(true); window.scrollTo({ top: 0, behavior: 'smooth' }) }} />
             <p style={{ margin: '1rem 0 0', color: 'var(--v-suave)', fontSize: '.88rem' }}>
-              ¿Todavía no pagas? Puedes subir el comprobante después desde <Link to="/mis-boletos">Mis boletos</Link>.
+              ¿Todavía no pagas? Puedes subir el comprobante desde <Link to="/mis-boletos">Mis boletos</Link> antes de que venza la reserva.
             </p>
           </div>
         )}
