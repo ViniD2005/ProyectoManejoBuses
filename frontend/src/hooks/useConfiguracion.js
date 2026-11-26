@@ -11,7 +11,6 @@ const POR_DEFECTO = {
   soporte_telefono: '',
   facebook_url: '',
   instagram_url: '',
-  cuenta_bancaria: '',
 }
 
 // Evento que dispara la pantalla de configuración al guardar, para refrescar la app

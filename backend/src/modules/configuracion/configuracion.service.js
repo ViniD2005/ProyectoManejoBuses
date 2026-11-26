@@ -10,8 +10,9 @@ function errorHttp(mensaje, status, detalles) {
 // Claves que el administrador puede editar (tabla configuracion_app)
 const CLAVES = [
   'nombre_app', 'logo_url', 'color_primario', 'color_acento',
-  'soporte_email', 'soporte_telefono', 'facebook_url', 'instagram_url', 'cuenta_bancaria',
+  'soporte_email', 'soporte_telefono', 'facebook_url', 'instagram_url',
 ]
+// GC-43: ya no hay una cuenta bancaria general: cada cooperativa registra la suya (módulo cuentas-bancarias)
 
 const COLOR = /^#[0-9a-fA-F]{6}$/
 const URL_WEB = /^https?:\/\/\S+$/
@@ -38,17 +39,13 @@ function validar(datos) {
     if (datos[clave] && !URL_WEB.test(datos[clave])) errores[clave] = 'Debe ser una dirección que empiece con http:// o https://'
   }
   if (datos.soporte_email && !CORREO.test(datos.soporte_email)) errores.soporte_email = 'El correo no es válido'
-  // GC-33: nombre, teléfono de soporte y cuenta bancaria con formato correcto
+  // GC-33: nombre y teléfono de soporte con formato correcto
   const nombre = String(datos.nombre_app ?? '').trim()
   if (nombre && (nombre.length < 2 || nombre.length > 40)) errores.nombre_app = 'El nombre debe tener entre 2 y 40 caracteres'
   const telefono = String(datos.soporte_telefono ?? '').replace(/[\s-]/g, '')
   if (telefono && !CELULAR.test(telefono) && !CONVENCIONAL.test(telefono)) {
     errores.soporte_telefono = 'Escribe un celular (09XXXXXXXX) o un teléfono fijo con código de provincia (02XXXXXXX)'
   }
-  const cuenta = String(datos.cuenta_bancaria ?? '').trim()
-  if (cuenta.length > 200) errores.cuenta_bancaria = 'Los datos de la cuenta no pueden superar los 200 caracteres'
-  else if (cuenta && !/\d{6,}/.test(cuenta.replace(/[\s-]/g, ''))) errores.cuenta_bancaria = 'Incluye el número de cuenta (al menos 6 dígitos), el banco y el titular'
-  else if (/[<>{}]/.test(cuenta)) errores.cuenta_bancaria = 'Los datos de la cuenta contienen caracteres no permitidos'
   if (Object.keys(errores).length) throw errorHttp('Revisa la configuración', 400, errores)
 }
 

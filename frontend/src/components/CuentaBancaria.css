@@ -1,0 +1,9 @@
+/* GC-43 - Cuenta de la cooperativa para transferencias y depósitos */
+.cuenta-coop { padding: 1rem 1.1rem; border-radius: 12px; border: 1px dashed var(--v-marca, #1f4e5f); background: var(--v-superficie-2, #f6f8fa); margin-bottom: 1rem; }
+.cuenta-coop dl { display: grid; gap: .35rem; margin: 0; }
+.cuenta-coop dl > div { display: grid; grid-template-columns: 9.5rem 1fr; gap: .75rem; align-items: baseline; }
+.cuenta-coop dt { color: var(--v-suave, #64748b); font-size: .85rem; }
+.cuenta-coop dd { margin: 0; font-weight: 700; word-break: break-word; display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.cuenta-coop__copiar { border: 1px solid currentColor; background: transparent; color: var(--v-marca, #1f4e5f); border-radius: 999px; padding: .1rem .6rem; font-size: .75rem; font-weight: 700; cursor: pointer; }
+.cuenta-coop__nota { margin: .75rem 0 0; font-size: .82rem; color: var(--v-suave, #64748b); }
+@media (max-width: 480px) { .cuenta-coop dl > div { grid-template-columns: 1fr; gap: 0; } }

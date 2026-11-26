@@ -5,7 +5,7 @@ import { EVENTO_CONFIGURACION } from '../../hooks/useConfiguracion.js'
 import { errorCorreo, errorTelefono } from '../../utils/validaciones.js'
 
 /*
-  CC-12 + GC-33: configuración general de la aplicación (solo el administrador).
+  CC-12 + GC-33 + GC-43: configuración general de la aplicación (solo el administrador).
   Los datos se agrupan por tema y se validan antes de enviarlos, con las mismas
   reglas que aplica el servidor.
 */
@@ -26,11 +26,6 @@ const SECCIONES = [
       { name: 'instagram_url', texto: 'Instagram', props: { placeholder: 'https://instagram.com/…' } },
     ],
   },
-  {
-    titulo: 'Pagos', icono: 'tarjeta', campos: [
-      { name: 'cuenta_bancaria', texto: 'Cuenta bancaria para transferencias y depósitos', props: { maxLength: 200, placeholder: 'Banco Pichincha · Cta. corriente 2201234567 · Pasajes Ecuador S.A.' }, ayuda: 'La ven los clientes al pagar. Incluye banco, tipo y número de cuenta y titular.' },
-    ],
-  },
 ]
 
 const URL_WEB = /^https?:\/\/\S+$/
@@ -48,10 +43,6 @@ function validar(form) {
   }
   if (form.soporte_email) e.soporte_email = errorCorreo(form.soporte_email)
   e.soporte_telefono = errorTelefono(form.soporte_telefono)
-  const cuenta = String(form.cuenta_bancaria || '').trim()
-  if (cuenta.length > 200) e.cuenta_bancaria = 'Los datos de la cuenta no pueden superar los 200 caracteres'
-  else if (cuenta && !/\d{6,}/.test(cuenta.replace(/[\s-]/g, ''))) e.cuenta_bancaria = 'Incluye el número de cuenta (al menos 6 dígitos), el banco y el titular'
-  else if (/[<>{}]/.test(cuenta)) e.cuenta_bancaria = 'Los datos de la cuenta contienen caracteres no permitidos'
   return Object.fromEntries(Object.entries(e).filter(([, v]) => v))
 }
 
@@ -108,12 +99,21 @@ export default function Configuracion() {
         <div>
           <span className="etiqueta-seccion">Administración</span>
           <h1>Configuración de la aplicación</h1>
-          <p>Nombre, logo, colores, datos de soporte y la cuenta bancaria que ven todos los usuarios.</p>
+          <p>Nombre, logo, colores y datos de soporte que ven todos los usuarios.</p>
         </div>
       </div>
 
       {error && <div className="alerta alerta--error" role="alert"><Icono nombre="alerta" /> {error}</div>}
       {aviso && <div className="alerta alerta--exito" role="status"><Icono nombre="checkCirculo" /> {aviso}</div>}
+
+      {/* GC-43: la aplicación no cobra: cada cooperativa recibe los pagos en su propia cuenta */}
+      <div className="alerta alerta--info">
+        <Icono nombre="info" />
+        <div>
+          <b>Las cuentas bancarias las registra cada cooperativa</b>
+          <div>Los clientes pagan directamente a la cooperativa de su viaje. Regístrala o corrígela en <b>Cooperativas → Cuenta bancaria</b>, o la cooperativa desde «Datos y apariencia».</div>
+        </div>
+      </div>
 
       <form onSubmit={guardar} noValidate>
         {SECCIONES.map((seccion) => (
@@ -121,7 +121,7 @@ export default function Configuracion() {
             <div className="card-header fila"><Icono nombre={seccion.icono} tam={18} /> {seccion.titulo}</div>
             <div className="card-body rejilla-2">
               {seccion.campos.map((campo) => (
-                <div key={campo.name} className={`campo ${errores[campo.name] ? 'campo--error' : ''}`} style={campo.name === 'cuenta_bancaria' ? { gridColumn: '1 / -1' } : undefined}>
+                <div key={campo.name} className={`campo ${errores[campo.name] ? 'campo--error' : ''}`}>
                   <label className="campo__etiqueta" htmlFor={campo.name}>{campo.texto}</label>
                   <input id={campo.name} name={campo.name} className="form-control" value={form[campo.name] || ''} onChange={cambiar}
                     aria-invalid={Boolean(errores[campo.name])} {...campo.props} />

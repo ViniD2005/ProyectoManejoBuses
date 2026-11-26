@@ -48,6 +48,8 @@ app.use('/api/viajes', require('./modules/viajes/viajes.routes'))
 app.use('/api/cooperativas', require('./modules/cooperativas/cooperativas.routes'))
 // GC-35 - Rutas destacadas (plan del administrador y marca de la cooperativa)
 app.use('/api/destacadas', require('./modules/destacadas/destacadas.routes'))
+// GC-43 - Cuenta bancaria de cada cooperativa (la registra la cooperativa o el administrador)
+app.use('/api/cuentas-bancarias', require('./modules/cuentas-bancarias/cuentas-bancarias.routes'))
 
 // Frente B - Modulo de buses
 app.use('/api/buses', require('./modules/buses/buses.routes'))

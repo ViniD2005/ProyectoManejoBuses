@@ -377,3 +377,6 @@ ol.etapas { list-style: none; padding: 0; }
 /* GC-35 - Rutas destacadas: aparecen primero y con una marca visible */
 .viaje--destacado { border-color: color-mix(in srgb, var(--coop, #d97706) 55%, white); box-shadow: 0 0 0 1px color-mix(in srgb, var(--coop, #d97706) 35%, white), 0 8px 24px -16px rgba(15, 23, 42, .35); }
 .viaje__destacado { display: inline-flex; align-items: center; gap: .3rem; width: max-content; margin-bottom: .6rem; padding: .2rem .65rem; border-radius: 999px; background: #fef3c7; color: #92400e; font-size: .76rem; font-weight: 800; letter-spacing: .02em; }
+
+/* GC-43 - Cooperativa sin cuenta bancaria: no recibe pagos en línea */
+.viaje__solo-ventanilla { display: inline-flex; width: max-content; margin: 0 0 .6rem .4rem; padding: .2rem .65rem; border-radius: 999px; background: #f1f5f9; color: #475569; font-size: .76rem; font-weight: 700; }
