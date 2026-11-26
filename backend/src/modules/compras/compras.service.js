@@ -1,6 +1,7 @@
 const fs = require('fs')
 const { pool, transaccion } = require('../../config/db')
 const { notificar, notificarOficinistas } = require('../../utils/notificar')
+const cuentas = require('../cuentas-bancarias/cuentas-bancarias.service')
 const { validarCedulaEcuador, validarNombreCompleto, validarFechaNacimiento, limpiar } = require('../../utils/validaciones')
 
 function errorHttp(mensaje, status, detalles) {
@@ -103,8 +104,22 @@ async function crear(clienteId, datos, opciones = {}) {
       throw errorHttp('Solo puedes vender boletos de los viajes de tu cooperativa', 403)
     }
 
-    const metodo = await cliente.query('SELECT id FROM metodo_pago WHERE id = $1 AND activo', [datos.metodo_pago_id])
+    const metodo = await cliente.query('SELECT id, requiere_comprobante FROM metodo_pago WHERE id = $1 AND activo', [datos.metodo_pago_id])
     if (!metodo.rows[0]) throw errorHttp('Método de pago no válido', 400)
+
+    // GC-43: el cliente transfiere o deposita a la cooperativa del viaje: debe tener su cuenta registrada
+    let cuentaCooperativa = null
+    if (!ventanilla && metodo.rows[0].requiere_comprobante) {
+      const coop = await cliente.query(
+        `SELECT nombre, cuenta_banco, cuenta_tipo, cuenta_numero, cuenta_titular, cuenta_identificacion
+           FROM cooperativa WHERE id = $1`,
+        [viaje.cooperativa_id]
+      )
+      if (!coop.rows[0]?.cuenta_numero) {
+        throw errorHttp(`${coop.rows[0]?.nombre || 'La cooperativa'} todavía no registra su cuenta bancaria, así que no recibe pagos por transferencia o depósito. Puedes comprar este viaje en su ventanilla.`, 409)
+      }
+      cuentaCooperativa = cuentas.formatear(coop.rows[0])
+    }
 
     const boletos = []
     for (const p of pasajeros) {
@@ -206,7 +221,7 @@ async function crear(clienteId, datos, opciones = {}) {
         `Se emitieron ${boletos.length} boleto(s) pagados en efectivo. Descárgalos desde Mis boletos.`)
     }
 
-    return { ...compra.rows[0], boletos }
+    return { ...compra.rows[0], boletos, cuenta_cooperativa: cuentaCooperativa }
   })
 }
 
@@ -223,6 +238,10 @@ async function listarMias(clienteId) {
             MIN(v.fecha)::text AS fecha_viaje,
             MIN(f.hora_salida)::text AS hora_salida,
             MIN(coop.nombre) AS cooperativa,
+            -- GC-43: cuenta de la cooperativa a la que se paga la transferencia o el depósito
+            (array_agg(json_build_object('banco', coop.cuenta_banco, 'tipo', coop.cuenta_tipo,
+              'numero', coop.cuenta_numero, 'titular', coop.cuenta_titular,
+              'identificacion', coop.cuenta_identificacion)))[1] AS cuenta_cooperativa,
             MIN(cs.nombre) AS origen,
             MIN(cb.nombre) AS destino
        FROM compra c

@@ -22,6 +22,7 @@ async function buscarViajes(filtros) {
            -- GC-35: ruta destacada solo si la cooperativa tiene el plan vigente
            (f.destacada AND c.rutas_destacadas > 0 AND c.destacadas_hasta >= CURRENT_DATE) AS destacado,
            c.id AS cooperativa_id, c.nombre AS cooperativa,
+           (c.cuenta_numero IS NOT NULL) AS pago_en_linea, -- GC-43: la cooperativa recibe transferencias
            c.logo_url AS cooperativa_logo, c.color_primario AS cooperativa_color,
            c.color_acento AS cooperativa_acento, c.eslogan AS cooperativa_eslogan,
            b.id AS bus_id, b.numero_disco, b.placa,
@@ -119,6 +120,7 @@ async function obtenerTramo(viajeId, subida, bajada) {
            f.hora_salida::text AS hora_salida,
            f.tipo_viaje, f.numero_resolucion,
            c.id AS cooperativa_id, c.nombre AS cooperativa,
+           (c.cuenta_numero IS NOT NULL) AS pago_en_linea, -- GC-43: la cooperativa recibe transferencias
            c.logo_url AS cooperativa_logo, c.color_primario AS cooperativa_color,
            c.color_acento AS cooperativa_acento, c.eslogan AS cooperativa_eslogan,
            b.id AS bus_id, b.numero_disco, b.placa,
