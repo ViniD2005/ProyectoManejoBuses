@@ -49,10 +49,29 @@ export default function Frecuencias() {
   const [estado, setEstado] = useState('todas')
   const [dialogo, preguntar] = useDialogo()
 
-  const cargarFrecuencias = () =>
-    api.get('/frecuencias')
+  const [plan, setPlan] = useState(null) // GC-35: cupo de rutas destacadas
+
+  const cargarFrecuencias = () => {
+    api.get('/destacadas/mi-plan').then(({ data }) => setPlan(data)).catch(() => {})
+    return api.get('/frecuencias')
       .then(({ data }) => setFrecuencias(data))
       .catch((err) => { setFrecuencias([]); setError(mensajeDeError(err)) })
+  }
+
+  // GC-35: marca o quita una ruta destacada (el servidor controla el cupo)
+  const alternarDestacada = async (frecuencia) => {
+    setError(''); setAviso('')
+    try {
+      const { data } = await api.patch(`/destacadas/frecuencias/${frecuencia.id}`, { destacada: !frecuencia.destacada })
+      setPlan(data.plan)
+      setFrecuencias((lista) => lista.map((f) => (f.id === frecuencia.id ? { ...f, destacada: data.destacada } : f)))
+      setAviso(data.destacada
+        ? `${data.ruta} ahora aparece primero en la búsqueda de los clientes.`
+        : `${data.ruta} dejó de ser destacada.`)
+    } catch (err) {
+      setError(mensajeDeError(err))
+    }
+  }
 
   useEffect(() => {
     cargarFrecuencias()
@@ -173,9 +192,10 @@ export default function Frecuencias() {
     if (frecuencia.activa) {
       const ok = await preguntar({
         titulo: `¿Desactivar ${frecuencia.origen} → ${frecuencia.destino} ${frecuencia.hora_salida.slice(0, 5)}?`,
-        mensaje: frecuencia.viajes_programados > 0
+        mensaje: (frecuencia.viajes_programados > 0
           ? `Tiene ${frecuencia.viajes_programados} viaje(s) programado(s). Una frecuencia inactiva no entra en las próximas hojas de ruta.`
-          : 'Una frecuencia inactiva no entra en las próximas hojas de ruta.',
+          : 'Una frecuencia inactiva no entra en las próximas hojas de ruta.') +
+          (frecuencia.destacada ? ' También dejará de ser destacada y liberará ese cupo.' : ''),
         textoConfirmar: 'Desactivar',
         tono: 'peligro',
       })
@@ -239,6 +259,27 @@ export default function Frecuencias() {
       {error && !form && <div className="alerta alerta--error" role="alert"><Icono nombre="alerta" /> {error}</div>}
       {aviso && <div className="alerta alerta--exito" role="status"><Icono nombre="checkCirculo" /> {aviso}</div>}
 
+      {/* GC-35: cupo de rutas destacadas */}
+      {plan && (plan.rutas_destacadas > 0 ? (
+        <div className={`alerta ${plan.vigente ? 'alerta--info' : 'alerta--aviso'}`}>
+          <Icono nombre="rayo" />
+          <div>
+            <b>Rutas destacadas: {plan.usadas} de {plan.rutas_destacadas} en uso</b>
+            <div>{plan.vigente
+              ? `Tus rutas con ★ aparecen primero en la búsqueda de los clientes hasta el ${plan.destacadas_hasta}.`
+              : `Tu plan venció el ${plan.destacadas_hasta}: tus rutas ya no aparecen primero. Renuévalo con el administrador del sistema.`}</div>
+          </div>
+        </div>
+      ) : (
+        <div className="alerta alerta--info">
+          <Icono nombre="rayo" />
+          <div>
+            <b>¿Quieres que tus rutas aparezcan primero?</b>
+            <div>Contrata un plan de rutas destacadas con el administrador del sistema.</div>
+          </div>
+        </div>
+      ))}
+
       <div className="card">
         <div className="card-body frec__filtros">
           <div className="campo frec__buscar">
@@ -259,7 +300,10 @@ export default function Frecuencias() {
             <tbody>
               {visibles.map((f) => (
                 <tr key={f.id} className={f.activa ? '' : 'frec__inactiva'}>
-                  <td><strong className="frec__hora">{f.hora_salida.slice(0, 5)}</strong></td>
+                  <td>
+                    <strong className="frec__hora">{f.hora_salida.slice(0, 5)}</strong>
+                    {f.destacada && <span className="insignia insignia--marca frec__destacada">★ Destacada</span>}
+                  </td>
                   <td>
                     <span className="frec__ruta">{f.origen_etiqueta}</span>
                     <span className="frec__ruta"><Icono nombre="flecha" tam={14} /> {f.destino_etiqueta}</span>
@@ -276,6 +320,13 @@ export default function Frecuencias() {
                     <button type="button" className="btn btn-sm btn--fantasma" onClick={() => verRecorrido(f)}><Icono nombre="ruta" tam={16} /> Recorrido</button>
                     <button type="button" className="btn btn-sm" onClick={() => abrirEdicion(f)}><Icono nombre="editar" tam={16} /> Editar</button>
                     <button type="button" className="btn btn-sm btn--fantasma" onClick={() => alternarEstado(f)}><Icono nombre="apagar" tam={16} /> {f.activa ? 'Desactivar' : 'Activar'}</button>
+                    {/* GC-35 */}
+                    {(f.destacada || (f.activa && plan?.rutas_destacadas > 0)) && (
+                      <button type="button" className={`btn btn-sm ${f.destacada ? 'btn--suave' : 'btn--fantasma'}`} aria-pressed={f.destacada}
+                        title={f.destacada ? 'Quitar de destacadas' : 'Mostrar primero en la búsqueda'} onClick={() => alternarDestacada(f)}>
+                        {f.destacada ? '★ Quitar destacada' : '☆ Destacar'}
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
