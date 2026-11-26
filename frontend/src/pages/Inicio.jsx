@@ -10,14 +10,14 @@ import BuscarViajes from './cliente/BuscarViajes.jsx'
 const BENEFICIOS = [
   { icono: 'asiento', titulo: 'Elige tu asiento', texto: 'Mira el mapa del bus y escoge ventana, pasillo o el piso que prefieras.' },
   { icono: 'qr', titulo: 'Boleto en tu celular', texto: 'Recibe tu boleto con código QR y preséntalo al subir al bus.' },
-  { icono: 'dinero', titulo: 'Descuentos de ley', texto: 'Tercera edad, personas con discapacidad, niños y estudiantes pagan menos.' },
-  { icono: 'escudo', titulo: 'Compra segura', texto: 'Solo cooperativas registradas y pagos validados por su personal.' },
+  { icono: 'dinero', titulo: 'Descuentos de ley', texto: 'Adultos mayores, personas con discapacidad y menores de edad pagan la mitad del pasaje.' },
+  { icono: 'escudo', titulo: 'Compra segura', texto: 'Solo cooperativas autorizadas y pagos revisados por su propio personal.' },
 ]
 
 const PASOS = [
   { titulo: 'Busca', texto: 'Origen, destino y fecha de tu viaje.' },
   { titulo: 'Elige', texto: 'El horario, la cooperativa y tus asientos.' },
-  { titulo: 'Paga', texto: 'Con tarjeta o transferencia bancaria.' },
+  { titulo: 'Paga', texto: 'Por transferencia o depósito, o en efectivo en la ventanilla.' },
   { titulo: 'Viaja', texto: 'Muestra tu código QR al abordar.' },
 ]
 
