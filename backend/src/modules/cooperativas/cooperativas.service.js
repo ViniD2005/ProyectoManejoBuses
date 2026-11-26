@@ -171,9 +171,9 @@ async function revisarDuplicados(datos, idActual = null) {
 
 /*
   CC-23: crea la cooperativa y le asigna su usuario responsable en una sola transacción.
-  datos.responsable puede ser:
-    { usuario_id }                                    -> un cliente registrado pasa a ser el usuario de la cooperativa
-    { nuevo: { cedula, nombres, apellidos, email, telefono, password } }  -> se crea su cuenta
+  GC-30: el responsable de una cooperativa NUEVA siempre es una cuenta nueva que se
+  crea en ese momento: datos.responsable = { nuevo: { cedula, nombres, apellidos, email, telefono, password } }.
+  Ya no se acepta elegir un usuario registrado ({ usuario_id }).
 */
 /*
   GC-11: paso 1 del registro en dos pantallas.
@@ -191,14 +191,8 @@ const crearCooperativa = async (datos) => {
   const responsable = datos.responsable || {}
 
   if (responsable.usuario_id) {
-    const { rows } = await pool.query(
-      `SELECT u.id, r.nombre AS rol, u.activo FROM usuario u JOIN rol r ON r.id = u.rol_id WHERE u.id = $1`,
-      [responsable.usuario_id]
-    )
-    const usuario = rows[0]
-    if (!usuario) errores.responsable = 'El usuario elegido no existe'
-    else if (!usuario.activo) errores.responsable = 'El usuario elegido está desactivado'
-    else if (usuario.rol !== 'cliente') errores.responsable = 'El usuario elegido ya tiene otro rol en el sistema. Elige un usuario registrado como cliente'
+    // GC-30: no se puede convertir a un usuario existente en responsable de una cooperativa nueva
+    errores.responsable = 'El responsable de una cooperativa nueva debe ser una cuenta nueva: llena sus datos para crearla'
   } else if (responsable.nuevo) {
     Object.assign(errores, erroresResponsableNuevo(responsable.nuevo))
     const { rows } = await pool.query(
@@ -206,10 +200,10 @@ const crearCooperativa = async (datos) => {
       [String(responsable.nuevo.cedula ?? '').trim(), String(responsable.nuevo.email ?? '').trim()]
     )
     if (rows.some((u) => u.cedula === String(responsable.nuevo.cedula).trim())) {
-      errores.responsable_cedula = 'Ya existe un usuario con esta cédula. Elige "Usuario registrado" y búscalo'
+      errores.responsable_cedula = 'Ya existe una cuenta con esta cédula. El responsable debe ser una persona sin cuenta en el sistema'
     }
     if (rows.some((u) => u.email === String(responsable.nuevo.email).trim().toLowerCase())) {
-      errores.responsable_email = 'Este correo ya está registrado'
+      errores.responsable_email = 'Este correo ya está registrado. Usa un correo que no tenga cuenta en el sistema'
     }
   } else {
     errores.responsable = 'Asigna el usuario que administrará la cooperativa'
@@ -227,22 +221,15 @@ const crearCooperativa = async (datos) => {
     )
     const cooperativaId = rows[0].id
 
-    if (responsable.usuario_id) {
-      await cliente.query(
-        `UPDATE usuario SET rol_id = (SELECT id FROM rol WHERE nombre = 'cooperativa'), cooperativa_id = $1
-          WHERE id = $2`,
-        [cooperativaId, responsable.usuario_id]
-      )
-    } else {
-      const n = responsable.nuevo
-      const hash = await bcrypt.hash(n.password, 10)
-      await cliente.query(
-        `INSERT INTO usuario (rol_id, cooperativa_id, cedula, nombres, apellidos, email, telefono, password_hash)
-         VALUES ((SELECT id FROM rol WHERE nombre = 'cooperativa'), $1, $2, $3, $4, LOWER($5), $6, $7)`,
-        [cooperativaId, n.cedula.trim(), limpiar(n.nombres), limpiar(n.apellidos), n.email.trim(),
-          n.telefono ? String(n.telefono).replace(/[\s-]/g, '') : null, hash]
-      )
-    }
+    // GC-30: se crea la cuenta del responsable con el rol cooperativa
+    const n = responsable.nuevo
+    const hash = await bcrypt.hash(n.password, 10)
+    await cliente.query(
+      `INSERT INTO usuario (rol_id, cooperativa_id, cedula, nombres, apellidos, email, telefono, password_hash)
+       VALUES ((SELECT id FROM rol WHERE nombre = 'cooperativa'), $1, $2, $3, $4, LOWER($5), $6, $7)`,
+      [cooperativaId, n.cedula.trim(), limpiar(n.nombres), limpiar(n.apellidos), n.email.trim(),
+        n.telefono ? String(n.telefono).replace(/[\s-]/g, '') : null, hash]
+    )
     return cooperativaId
   })
 
