@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react'
 import api from '../../services/api.js'
 import { useAuth } from '../../context/AuthContext.jsx'
+import {
+  errorCedula, errorNombres, errorCorreo, errorTelefono, errorFechaNacimiento, errorContrasena,
+  erroresLicencia, estadoLicencia, haceAnios,
+} from '../../utils/validaciones.js'
 
 const NOMBRE_ROL = {
   admin: 'Administrador',
@@ -13,7 +17,7 @@ const DESCRIPCION_ROL = {
   admin: 'Gestiona cooperativas, usuarios y la configuración de la aplicación.',
   cooperativa: 'Administra los buses, frecuencias, hojas de ruta, personal y apariencia de su cooperativa.',
   oficinista: 'Vende boletos en ventanilla y valida los comprobantes de pago.',
-  personal_bus: 'Chofer o ayudante: valida los boletos al abordar.',
+  personal_bus: 'Chofer o ayudante: inicia los viajes, valida los boletos y vende a bordo.',
   cliente: 'Compra pasajes desde la página web.',
 }
 const COLOR_ROL = { admin: 'insignia--info', cooperativa: 'insignia--marca', oficinista: 'insignia--aviso', personal_bus: 'insignia--exito', cliente: '' }
@@ -22,7 +26,57 @@ const ROLES_POR_USUARIO = {
   cooperativa: ['oficinista', 'personal_bus'],
 }
 const ROLES_CON_COOPERATIVA = ['cooperativa', 'oficinista', 'personal_bus']
-const FORM_VACIO = { rol: '', cooperativa_id: '', cedula: '', nombres: '', apellidos: '', email: '', telefono: '', password: '' }
+const FORM_VACIO = {
+  rol: '', cooperativa_id: '', cedula: '', nombres: '', apellidos: '', email: '', telefono: '', password: '',
+  fecha_nacimiento: '', cargo: '', licencia_tipo: '', licencia_vence: '', // GC-33
+}
+const NOMBRE_CARGO = { chofer: 'Chofer', ayudante: 'Ayudante' }
+
+/*
+  GC-33: campos del personal del bus (cargo y licencia del chofer).
+  datos: { cargo, licencia_tipo, licencia_vence }; errores por campo; alCambiar(nombre, valor)
+*/
+function CamposPersonalBus({ datos, errores, alCambiar, prefijo }) {
+  const hoy = new Date().toLocaleDateString('en-CA')
+  return (
+    <>
+      <div className={`campo ${errores.cargo ? 'campo--error' : ''}`}>
+        <label className="campo__etiqueta" htmlFor={`${prefijo}-cargo`}>Cargo</label>
+        <select id={`${prefijo}-cargo`} value={datos.cargo} onChange={(e) => alCambiar('cargo', e.target.value)}>
+          <option value="">Elige el cargo</option>
+          <option value="chofer">Chofer</option>
+          <option value="ayudante">Ayudante</option>
+        </select>
+        {errores.cargo && <span className="campo__error">{errores.cargo}</span>}
+      </div>
+      {datos.cargo === 'chofer' && (
+        <div className="rejilla-2">
+          <div className={`campo ${errores.licencia_tipo ? 'campo--error' : ''}`}>
+            <label className="campo__etiqueta" htmlFor={`${prefijo}-licencia_tipo`}>Tipo de licencia</label>
+            <select id={`${prefijo}-licencia_tipo`} value={datos.licencia_tipo} onChange={(e) => alCambiar('licencia_tipo', e.target.value)}>
+              <option value="">Elige</option>
+              <option value="D">D · buses de pasajeros</option>
+              <option value="E">E · vehículos pesados</option>
+            </select>
+            {errores.licencia_tipo && <span className="campo__error">{errores.licencia_tipo}</span>}
+          </div>
+          <div className={`campo ${errores.licencia_vence ? 'campo--error' : ''}`}>
+            <label className="campo__etiqueta" htmlFor={`${prefijo}-licencia_vence`}>Vence el</label>
+            <input id={`${prefijo}-licencia_vence`} type="date" min={hoy} max={haceAnios(-5)} value={datos.licencia_vence}
+              onChange={(e) => alCambiar('licencia_vence', e.target.value)} />
+            {errores.licencia_vence && <span className="campo__error">{errores.licencia_vence}</span>}
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
+// GC-33: errores del cargo y la licencia antes de enviar
+function erroresPersonalBus(datos) {
+  if (!datos.cargo) return { cargo: 'Elige el cargo: chofer o ayudante' }
+  return datos.cargo === 'chofer' ? erroresLicencia(datos.licencia_tipo, datos.licencia_vence) : {}
+}
 
 function mensajeDeError(err) {
   return err.response?.data?.mensaje || 'No pudimos conectarnos con el servidor. Inténtalo de nuevo.'
@@ -46,6 +100,7 @@ export default function Usuarios() {
   const [pestana, setPestana] = useState('equipo')
   const [filtro, setFiltro] = useState('')
   const [panelAbierto, setPanelAbierto] = useState(false)
+  const [editandoPersonal, setEditandoPersonal] = useState(null) // GC-33: cargo y licencia
   const [error, setError] = useState('')
   const [aviso, setAviso] = useState('')
 
@@ -149,12 +204,24 @@ export default function Usuarios() {
                       </div>
                     </td>
                     <td>{u.cedula}</td>
-                    <td><span className={`insignia ${COLOR_ROL[u.rol] || ''}`}>{NOMBRE_ROL[u.rol] || u.rol}</span></td>
+                    <td>
+                      <span className={`insignia ${COLOR_ROL[u.rol] || ''}`}>{NOMBRE_ROL[u.rol] || u.rol}</span>
+                      {/* GC-33: cargo y estado de la licencia del personal del bus */}
+                      {u.rol === 'personal_bus' && (
+                        <div style={{ display: 'grid', gap: '.25rem', marginTop: '.35rem', fontSize: '.8rem' }}>
+                          <span className="texto-suave">{NOMBRE_CARGO[u.cargo] || 'Sin cargo'}</span>
+                          {u.cargo === 'chofer' && <span className={`insignia ${estadoLicencia(u.licencia_vence).clase}`}>{estadoLicencia(u.licencia_vence).texto}</span>}
+                        </div>
+                      )}
+                    </td>
                     {esAdmin && <td>{u.cooperativa || <span className="texto-suave">—</span>}</td>}
                     <td>
                       <span className={`insignia ${u.activo ? 'insignia--exito' : 'insignia--error'}`}>{u.activo ? 'Activo' : 'Inactivo'}</span>
                     </td>
                     <td style={{ textAlign: 'right' }}>
+                      {u.rol === 'personal_bus' && (
+                        <button type="button" className="btn btn-sm" style={{ marginRight: '.4rem' }} onClick={() => { setEditandoPersonal(u); setAviso('') }}>Cargo y licencia</button>
+                      )}
                       {u.id !== usuario.id && (
                         <button type="button" className={`btn btn-sm ${u.activo ? 'btn-outline-danger' : 'btn-outline-success'}`} onClick={() => alternarEstado(u)}>
                           {u.activo ? 'Desactivar' : 'Activar'}
@@ -173,6 +240,11 @@ export default function Usuarios() {
             </table>
           </div>
         </div>
+      )}
+
+      {editandoPersonal && (
+        <PanelPersonalBus usuario={editandoPersonal} alCerrar={() => setEditandoPersonal(null)}
+          alGuardar={(u) => { setEditandoPersonal(null); setAviso(`Se actualizaron el cargo y la licencia de ${u.nombres} ${u.apellidos}.`); cargar() }} />
       )}
 
       {panelAbierto && (
@@ -197,9 +269,28 @@ function PanelNuevoUsuario({ roles, esAdmin, cooperativas, alCerrar, alCrear }) 
     setErrores({ ...errores, [e.target.name]: '' })
   }
 
+  // GC-33: se revisa todo antes de enviar, con las mismas reglas que el servidor
+  const revisar = () => {
+    const encontrados = {
+      cedula: errorCedula(form.cedula),
+      nombres: errorNombres(form.nombres, 'los nombres'),
+      apellidos: errorNombres(form.apellidos, 'los apellidos'),
+      email: errorCorreo(form.email),
+      telefono: errorTelefono(form.telefono),
+      fecha_nacimiento: errorFechaNacimiento(form.fecha_nacimiento, 18),
+      password: errorContrasena(form.password),
+      ...(esAdmin && ROLES_CON_COOPERATIVA.includes(form.rol) && !form.cooperativa_id ? { cooperativa_id: 'Elige la cooperativa a la que pertenece' } : {}),
+      ...(form.rol === 'personal_bus' ? erroresPersonalBus(form) : {}),
+    }
+    const conError = Object.fromEntries(Object.entries(encontrados).filter(([, v]) => v))
+    setErrores(conError)
+    return Object.keys(conError).length === 0
+  }
+
   const guardar = async (e) => {
     e.preventDefault()
     setError('')
+    if (!revisar()) return setError('Revisa los datos marcados')
     setEnviando(true)
     try {
       const { data } = await api.post('/usuarios', form)
@@ -257,7 +348,14 @@ function PanelNuevoUsuario({ roles, esAdmin, cooperativas, alCerrar, alCrear }) 
             {campo('apellidos', 'Apellidos', { placeholder: 'Ej. Paredes Mora' })}
           </div>
           {campo('email', 'Correo electrónico', { type: 'email', placeholder: 'nombre@correo.com' }, 'Con este correo iniciará sesión.')}
-          {campo('telefono', 'Celular (opcional)', { inputMode: 'tel', placeholder: '09XXXXXXXX' })}
+          <div className="rejilla-2">
+            {campo('telefono', 'Celular (opcional)', { inputMode: 'tel', placeholder: '09XXXXXXXX' })}
+            {campo('fecha_nacimiento', 'Fecha de nacimiento', { type: 'date', max: haceAnios(18), min: haceAnios(120) }, 'Debe ser mayor de edad.')}
+          </div>
+          {form.rol === 'personal_bus' && (
+            <CamposPersonalBus prefijo="nuevo" datos={form} errores={errores}
+              alCambiar={(nombre, valor) => { setForm({ ...form, [nombre]: valor }); setErrores({ ...errores, [nombre]: '' }) }} />
+          )}
           {campo('password', 'Contraseña inicial', { type: 'password', autoComplete: 'new-password' },
             'Mínimo 8 caracteres, con mayúscula, minúscula y número. Compártela de forma segura.')}
         </div>
@@ -279,6 +377,7 @@ function AsignarRol({ cooperativas, solicitante, alAsignar, alFallar }) {
   const [elegido, setElegido] = useState(null)
   const [rol, setRol] = useState('')
   const [cooperativaId, setCooperativaId] = useState('')
+  const [personal, setPersonal] = useState({ cargo: '', licencia_tipo: '', licencia_vence: '' }) // GC-33
   const [errores, setErrores] = useState({})
   const [guardando, setGuardando] = useState(false)
 
@@ -302,6 +401,7 @@ function AsignarRol({ cooperativas, solicitante, alAsignar, alFallar }) {
     setElegido(u)
     setRol(u.rol)
     setCooperativaId(u.cooperativa_id ? String(u.cooperativa_id) : '')
+    setPersonal({ cargo: u.cargo || '', licencia_tipo: u.licencia_tipo || '', licencia_vence: u.licencia_vence || '' })
     setErrores({})
   }
 
@@ -311,11 +411,16 @@ function AsignarRol({ cooperativas, solicitante, alAsignar, alFallar }) {
     if (ROLES_CON_COOPERATIVA.includes(rol) && !cooperativaId) {
       return setErrores({ cooperativa_id: 'Elige la cooperativa a la que pertenecerá' })
     }
+    if (rol === 'personal_bus') {
+      const problemas = erroresPersonalBus(personal)
+      if (Object.keys(problemas).length) return setErrores(problemas)
+    }
     setGuardando(true)
     try {
       const { data } = await api.patch(`/usuarios/${elegido.id}/rol`, {
         rol,
         cooperativa_id: ROLES_CON_COOPERATIVA.includes(rol) ? Number(cooperativaId) : null,
+        ...(rol === 'personal_bus' ? personal : {}),
       })
       setResultados((lista) => lista.map((u) => (u.id === data.id ? data : u)))
       setElegido(null)
@@ -410,12 +515,67 @@ function AsignarRol({ cooperativas, solicitante, alAsignar, alFallar }) {
                 </div>
               )}
 
+              {rol === 'personal_bus' && (
+                <CamposPersonalBus prefijo="asignar" datos={personal} errores={errores}
+                  alCambiar={(nombre, valor) => { setPersonal({ ...personal, [nombre]: valor }); setErrores({}) }} />
+              )}
+
               <div className="alerta alerta--info">El cambio se aplica la próxima vez que la persona inicie sesión.</div>
               <button className="btn btn-primary btn--bloque" disabled={guardando}>{guardando ? 'Guardando…' : 'Asignar rol'}</button>
             </form>
           )}
         </div>
       </div>
+    </div>
+  )
+}
+
+// GC-33: cambiar el cargo o renovar la licencia de alguien del personal del bus
+function PanelPersonalBus({ usuario, alCerrar, alGuardar }) {
+  const [datos, setDatos] = useState({ cargo: usuario.cargo || '', licencia_tipo: usuario.licencia_tipo || '', licencia_vence: usuario.licencia_vence || '' })
+  const [errores, setErrores] = useState({})
+  const [error, setError] = useState('')
+  const [enviando, setEnviando] = useState(false)
+
+  const guardar = async (e) => {
+    e.preventDefault()
+    setError('')
+    const problemas = erroresPersonalBus(datos)
+    setErrores(problemas)
+    if (Object.keys(problemas).length) return
+    setEnviando(true)
+    try {
+      const { data } = await api.patch(`/usuarios/${usuario.id}/personal-bus`, datos)
+      alGuardar(data)
+    } catch (err) {
+      setErrores(err.response?.data?.detalles || {})
+      setError(mensajeDeError(err))
+    } finally {
+      setEnviando(false)
+    }
+  }
+
+  return (
+    <div className="capa" onMouseDown={(e) => { if (e.target === e.currentTarget) alCerrar() }}>
+      <form className="panel" onSubmit={guardar} noValidate>
+        <div className="panel__cabecera">
+          <div>
+            <h2>Cargo y licencia</h2>
+            <p>{usuario.nombres} {usuario.apellidos}</p>
+          </div>
+          <button type="button" className="btn btn--fantasma btn--icono" onClick={alCerrar} aria-label="Cerrar">✕</button>
+        </div>
+        <div className="panel__cuerpo">
+          {error && <div className="alerta alerta--error" role="alert">{error}</div>}
+          <CamposPersonalBus prefijo="editar" datos={datos} errores={errores}
+            alCambiar={(nombre, valor) => { setDatos({ ...datos, [nombre]: valor }); setErrores({ ...errores, [nombre]: '' }) }} />
+          <p className="texto-suave" style={{ fontSize: '.85rem' }}>Cuando el chofer renueve su licencia, registra aquí la nueva fecha de vencimiento.</p>
+        </div>
+        <div className="panel__pie">
+          <button type="button" className="btn" onClick={alCerrar}>Cancelar</button>
+          <button className="btn btn-primary" disabled={enviando}>{enviando ? 'Guardando…' : 'Guardar'}</button>
+        </div>
+      </form>
     </div>
   )
 }

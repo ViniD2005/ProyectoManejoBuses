@@ -2,7 +2,7 @@ const bcrypt = require('bcryptjs')
 const { pool } = require('../../config/db')
 const {
   agregar, limpiar, validarNombrePersona, validarCedulaEcuador, validarCorreo,
-  validarTelefono, validarContrasena,
+  validarTelefono, validarContrasena, validarFechaNacimiento, validarLicencia,
 } = require('../../utils/validaciones')
 
 function errorHttp(mensaje, status, detalles) {
@@ -22,7 +22,31 @@ const ROLES_PERMITIDOS = {
 }
 
 const CAMPOS = `u.id, u.cedula, u.nombres, u.apellidos, u.email, u.telefono, u.activo, u.creado_en,
-                r.nombre AS rol, u.cooperativa_id, c.nombre AS cooperativa`
+                r.nombre AS rol, u.cooperativa_id, c.nombre AS cooperativa,
+                u.fecha_nacimiento::text AS fecha_nacimiento, u.cargo, u.licencia_tipo, u.licencia_vence::text AS licencia_vence`
+
+/*
+  GC-33: datos propios del personal del bus.
+  - cargo: chofer o ayudante (obligatorio para el personal del bus)
+  - el chofer necesita licencia profesional tipo D o E vigente
+  Devuelve { errores, valores } con los valores listos para guardar.
+*/
+const CARGOS = ['chofer', 'ayudante']
+function datosPersonalBus(datos) {
+  const errores = {}
+  const cargo = String(datos.cargo || '').toLowerCase()
+  if (!CARGOS.includes(cargo)) errores.cargo = 'Elige el cargo: chofer o ayudante'
+  if (cargo === 'chofer') Object.assign(errores, validarLicencia(datos.licencia_tipo, datos.licencia_vence))
+  const esChofer = cargo === 'chofer'
+  return {
+    errores,
+    valores: {
+      cargo: CARGOS.includes(cargo) ? cargo : null,
+      licencia_tipo: esChofer ? String(datos.licencia_tipo || '').toUpperCase() : null,
+      licencia_vence: esChofer ? datos.licencia_vence : null,
+    },
+  }
+}
 
 async function obtener(id) {
   const { rows } = await pool.query(
@@ -93,6 +117,10 @@ async function crear(solicitante, datos) {
   agregar(errores, 'email', validarCorreo(datos.email))
   agregar(errores, 'telefono', validarTelefono(datos.telefono))
   agregar(errores, 'password', validarContrasena(datos.password))
+  // GC-33: todo el personal debe ser mayor de edad
+  agregar(errores, 'fecha_nacimiento', validarFechaNacimiento(datos.fecha_nacimiento, true, 18))
+  const personal = datosPersonalBus(datos)
+  if (datos.rol === 'personal_bus') Object.assign(errores, personal.errores)
 
   // La cooperativa crea siempre en la suya; el admin la elige
   const cooperativaId = solicitante.rol === 'cooperativa'
@@ -118,11 +146,14 @@ async function crear(solicitante, datos) {
 
   const hash = await bcrypt.hash(datos.password, 10)
   const { rows } = await pool.query(
-    `INSERT INTO usuario (rol_id, cooperativa_id, cedula, nombres, apellidos, email, telefono, password_hash)
-     VALUES ((SELECT id FROM rol WHERE nombre = $1), $2, $3, $4, $5, LOWER($6), $7, $8)
+    `INSERT INTO usuario (rol_id, cooperativa_id, cedula, nombres, apellidos, email, telefono, password_hash,
+                          fecha_nacimiento, cargo, licencia_tipo, licencia_vence)
+     VALUES ((SELECT id FROM rol WHERE nombre = $1), $2, $3, $4, $5, LOWER($6), $7, $8, $9, $10, $11, $12)
      RETURNING id`,
     [datos.rol, cooperativaId, datos.cedula.trim(), limpiar(datos.nombres), limpiar(datos.apellidos),
-      datos.email.trim(), datos.telefono ? String(datos.telefono).replace(/[\s-]/g, '') : null, hash]
+      datos.email.trim(), datos.telefono ? String(datos.telefono).replace(/[\s-]/g, '') : null, hash,
+      datos.fecha_nacimiento,
+      ...(datos.rol === 'personal_bus' ? [personal.valores.cargo, personal.valores.licencia_tipo, personal.valores.licencia_vence] : [null, null, null])]
   )
   return obtener(rows[0].id)
 }
@@ -134,7 +165,8 @@ async function crear(solicitante, datos) {
   - nadie puede cambiar su propio rol
   El usuario verá el nuevo rol la próxima vez que inicie sesión.
 */
-async function asignarRol(solicitante, id, { rol, cooperativa_id: cooperativaIdRecibida }) {
+async function asignarRol(solicitante, id, datos) {
+  const { rol, cooperativa_id: cooperativaIdRecibida } = datos
   if (Number(id) === solicitante.id) throw errorHttp('No puedes cambiar tu propio rol', 409)
   const usuario = await obtener(id)
   if (!usuario) throw errorHttp('Usuario no encontrado', 404)
@@ -147,15 +179,42 @@ async function asignarRol(solicitante, id, { rol, cooperativa_id: cooperativaIdR
     if (!cooperativaId) errores.cooperativa_id = 'Elige la cooperativa a la que pertenecerá'
     else if (!(await cooperativaActiva(cooperativaId))) errores.cooperativa_id = 'La cooperativa elegida no existe o está desactivada'
   }
+  // GC-33: el personal debe ser mayor de edad; el personal del bus necesita cargo (y licencia si es chofer)
+  if (rol && rol !== 'cliente' && usuario.fecha_nacimiento && validarFechaNacimiento(usuario.fecha_nacimiento, true, 18)) {
+    errores.rol = `${usuario.nombres} todavía no cumple 18 años: no puede tener un rol del personal`
+  }
+  const personal = datosPersonalBus(datos)
+  if (rol === 'personal_bus') Object.assign(errores, personal.errores)
   if (Object.keys(errores).length) throw errorHttp('Revisa el rol a asignar', 400, errores)
 
-  if (usuario.rol === rol && (usuario.cooperativa_id || null) === cooperativaId) {
+  if (usuario.rol === rol && rol !== 'personal_bus' && (usuario.cooperativa_id || null) === cooperativaId) {
     throw errorHttp(`${usuario.nombres} ya tiene ese rol`, 409)
   }
 
+  const extra = rol === 'personal_bus' ? personal.valores : { cargo: null, licencia_tipo: null, licencia_vence: null }
   await pool.query(
-    'UPDATE usuario SET rol_id = (SELECT id FROM rol WHERE nombre = $1), cooperativa_id = $2 WHERE id = $3',
-    [rol, cooperativaId, id]
+    `UPDATE usuario SET rol_id = (SELECT id FROM rol WHERE nombre = $1), cooperativa_id = $2,
+            cargo = $4, licencia_tipo = $5, licencia_vence = $6
+      WHERE id = $3`,
+    [rol, cooperativaId, id, extra.cargo, extra.licencia_tipo, extra.licencia_vence]
+  )
+  return obtener(id)
+}
+
+/*
+  GC-33: renovar la licencia o cambiar el cargo de alguien del personal del bus.
+  La cooperativa solo puede hacerlo con su propio personal.
+*/
+async function actualizarPersonalBus(solicitante, id, datos) {
+  const visibles = await listar(solicitante)
+  const usuario = visibles.find((u) => u.id === Number(id))
+  if (!usuario) throw errorHttp('Usuario no encontrado', 404)
+  if (usuario.rol !== 'personal_bus') throw errorHttp('Solo el personal del bus tiene cargo y licencia', 409)
+  const { errores, valores } = datosPersonalBus(datos)
+  if (Object.keys(errores).length) throw errorHttp('Revisa el cargo y la licencia', 400, errores)
+  await pool.query(
+    'UPDATE usuario SET cargo = $1, licencia_tipo = $2, licencia_vence = $3 WHERE id = $4',
+    [valores.cargo, valores.licencia_tipo, valores.licencia_vence, id]
   )
   return obtener(id)
 }
@@ -168,4 +227,4 @@ async function cambiarEstado(solicitante, id, activo) {
   return (await listar(solicitante)).find((u) => u.id === Number(id))
 }
 
-module.exports = { listar, buscar, crear, asignarRol, cambiarEstado }
+module.exports = { listar, buscar, crear, asignarRol, cambiarEstado, actualizarPersonalBus }

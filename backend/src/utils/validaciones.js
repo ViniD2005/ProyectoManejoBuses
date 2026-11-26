@@ -90,17 +90,51 @@ function validarContrasena(valor) {
   return null
 }
 
-// Fecha de nacimiento: fecha real, no futura y de una persona de hasta 120 años
-function validarFechaNacimiento(valor, obligatorio = true) {
+// Edad cumplida a una fecha (por defecto, hoy en Ecuador). fecha: 'AAAA-MM-DD'
+function edad(fecha, referencia = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Guayaquil' })) {
+  const [a, m, d] = fecha.split('-').map(Number)
+  const [ra, rm, rd] = referencia.split('-').map(Number)
+  return ra - a - (rm < m || (rm === m && rd < d) ? 1 : 0)
+}
+
+/*
+  Fecha de nacimiento: fecha real (no 31 de febrero), no futura y de una persona de hasta 120 años.
+  GC-33: edadMinima exige una edad cumplida (18 para crear una cuenta o para el personal).
+*/
+function validarFechaNacimiento(valor, obligatorio = true, edadMinima = 0) {
   if (!valor) return obligatorio ? 'La fecha de nacimiento es obligatoria' : null
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(valor) || Number.isNaN(Date.parse(`${valor}T12:00:00Z`))) {
+  const texto = String(valor)
+  const fecha = new Date(`${texto}T12:00:00Z`)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(texto) || Number.isNaN(fecha.getTime()) || fecha.toISOString().slice(0, 10) !== texto) {
     return 'La fecha de nacimiento no es válida'
   }
   const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Guayaquil' })
-  if (valor > hoy) return 'La fecha de nacimiento no puede ser futura'
-  const anio = Number(valor.slice(0, 4))
-  if (Number(hoy.slice(0, 4)) - anio > 120) return 'Revisa el año de nacimiento'
+  if (texto > hoy) return 'La fecha de nacimiento no puede ser futura'
+  if (edad(texto, hoy) > 120) return 'Revisa el año de nacimiento'
+  if (edadMinima && edad(texto, hoy) < edadMinima) return `Debe tener al menos ${edadMinima} años cumplidos`
   return null
+}
+
+/*
+  GC-33: licencia profesional del chofer de bus en Ecuador.
+  Tipo D (buses de pasajeros) o E (vehículos pesados y buses); debe estar vigente
+  y, como dura máximo 5 años, no puede vencer después de 5 años desde hoy.
+*/
+const TIPOS_LICENCIA = ['D', 'E']
+function validarLicencia(tipo, vence) {
+  const errores = {}
+  if (!tipo) errores.licencia_tipo = 'Elige el tipo de licencia del chofer'
+  else if (!TIPOS_LICENCIA.includes(String(tipo).toUpperCase())) errores.licencia_tipo = 'Para conducir buses la licencia debe ser tipo D o E'
+  const texto = String(vence ?? '')
+  const fecha = new Date(`${texto}T12:00:00Z`)
+  const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Guayaquil' })
+  const maximo = new Date(`${hoy}T12:00:00Z`)
+  maximo.setUTCFullYear(maximo.getUTCFullYear() + 5)
+  if (!texto) errores.licencia_vence = 'Indica la fecha en que vence la licencia'
+  else if (!/^\d{4}-\d{2}-\d{2}$/.test(texto) || Number.isNaN(fecha.getTime()) || fecha.toISOString().slice(0, 10) !== texto) errores.licencia_vence = 'La fecha de vencimiento no es válida'
+  else if (texto <= hoy) errores.licencia_vence = 'La licencia está vencida: el chofer no puede registrarse hasta renovarla'
+  else if (texto > maximo.toISOString().slice(0, 10)) errores.licencia_vence = 'Una licencia dura máximo 5 años: revisa la fecha de vencimiento'
+  return errores
 }
 
 // Placa de Ecuador: tres letras, guion y 3 o 4 números (ABC-1234)
@@ -131,6 +165,8 @@ module.exports = {
   validarTelefono,
   validarContrasena,
   validarFechaNacimiento,
+  validarLicencia,
+  edad,
   validarPlaca,
   validarTexto,
 }

@@ -44,14 +44,18 @@ export default function TiposAsiento() {
     setError('')
     setMensaje('')
     const locales = {}
-    if (form.nombre.trim().length < 3) locales.nombre = 'Escribe un nombre de al menos 3 caracteres, por ejemplo "VIP"'
+    const nombre = form.nombre.trim().replace(/\s+/g, ' ')
+    if (nombre.length < 3) locales.nombre = 'Escribe un nombre de al menos 3 caracteres, por ejemplo "VIP"'
+    else if (/[<>{}]/.test(nombre)) locales.nombre = 'El nombre contiene caracteres no permitidos'
+    // GC-33: no se repite el nombre (sin importar mayúsculas)
+    else if (tipos.some((t) => t.id !== idEditar && t.nombre.trim().toLowerCase() === nombre.toLowerCase())) locales.nombre = 'Ya tienes un tipo de asiento con ese nombre'
     const factor = Number(form.factor_precio)
     if (!factor || factor < 0.5 || factor > 3) locales.factor_precio = 'El factor debe estar entre 0.50 y 3.00'
     if (Object.keys(locales).length) return setErrores(locales)
 
     setGuardando(true)
     try {
-      const datos = { nombre: form.nombre.trim(), factor_precio: factor }
+      const datos = { nombre, factor_precio: factor }
       if (idEditar) {
         await api.put(`/tipos-asiento/${idEditar}`, datos)
         setMensaje(`El tipo "${datos.nombre}" se actualizó correctamente`)

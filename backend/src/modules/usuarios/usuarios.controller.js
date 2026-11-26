@@ -6,4 +6,7 @@ const crear = async (req, res) => res.status(201).json(await servicio.crear(req.
 const asignarRol = async (req, res) => res.json(await servicio.asignarRol(req.usuario, req.params.id, req.body))
 const cambiarEstado = async (req, res) => res.json(await servicio.cambiarEstado(req.usuario, req.params.id, req.body.activo))
 
-module.exports = { listar, buscar, crear, asignarRol, cambiarEstado }
+// GC-33: cargo y licencia del personal del bus
+const actualizarPersonalBus = async (req, res) => res.json(await servicio.actualizarPersonalBus(req.usuario, req.params.id, req.body))
+
+module.exports = { listar, buscar, crear, asignarRol, cambiarEstado, actualizarPersonalBus }

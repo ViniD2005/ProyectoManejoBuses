@@ -76,7 +76,8 @@ async function registrarCliente(datos) {
   agregar(errores, 'apellidos', validarNombrePersona(apellidos, 'tus apellidos', true))
   agregar(errores, 'email', validarCorreo(email))
   agregar(errores, 'telefono', validarTelefono(telefono))
-  agregar(errores, 'fecha_nacimiento', validarFechaNacimiento(fecha_nacimiento))
+  // GC-33: para crear una cuenta y comprar hay que ser mayor de edad
+  agregar(errores, 'fecha_nacimiento', validarFechaNacimiento(fecha_nacimiento, true, 18))
   agregar(errores, 'password', validarContrasena(password))
 
   // Cédula y correo únicos: se avisa antes de intentar guardar

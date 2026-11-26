@@ -7,7 +7,7 @@ import ArteAcceso from './ArteAcceso.jsx'
 import { TarjetaCorreo, BotonReenviar, AccesoMailHog } from './PiezasCorreo.jsx'
 import {
   errorCedula, errorNombres, errorCorreo, errorTelefono, errorFechaNacimiento,
-  errorContrasena, requisitosContrasena,
+  errorContrasena, requisitosContrasena, haceAnios,
 } from '../../utils/validaciones.js'
 
 const VACIO = { cedula: '', nombres: '', apellidos: '', email: '', telefono: '', fecha_nacimiento: '', password: '', confirmar: '' }
@@ -18,7 +18,7 @@ function validar(form) {
     cedula: errorCedula(form.cedula),
     nombres: errorNombres(form.nombres, 'tus nombres'),
     apellidos: errorNombres(form.apellidos, 'tus apellidos'),
-    fecha_nacimiento: errorFechaNacimiento(form.fecha_nacimiento),
+    fecha_nacimiento: errorFechaNacimiento(form.fecha_nacimiento, 18), // GC-33: mayor de edad
     email: errorCorreo(form.email),
     telefono: errorTelefono(form.telefono),
     password: errorContrasena(form.password),
@@ -133,7 +133,7 @@ function Registro() {
             {campo('apellidos', 'Apellidos', { autoComplete: 'family-name', placeholder: 'Ej. Pérez Gómez' })}
           </div>
           <div className="rejilla-2">
-            {campo('fecha_nacimiento', 'Fecha de nacimiento', { type: 'date' }, 'Sirve para aplicar descuentos de ley.')}
+            {campo('fecha_nacimiento', 'Fecha de nacimiento', { type: 'date', max: haceAnios(18), min: haceAnios(120) }, 'Debes ser mayor de edad. Sirve para aplicar descuentos de ley.')}
             {campo('telefono', 'Celular (opcional)', { inputMode: 'tel', placeholder: '09XXXXXXXX', autoComplete: 'tel' })}
           </div>
           {campo('email', 'Correo electrónico', { type: 'email', placeholder: 'nombre@correo.com', autoComplete: 'email' })}
