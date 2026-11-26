@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../../services/api.js'
 import IconoBus from './IconoBus.jsx'
+import CuentaBancaria from '../../components/CuentaBancaria.jsx'
 import { dinero, fechaLarga, horaEnParada } from './formatos.js'
 import './Viajes.css'
 import './Compra.css'
@@ -274,7 +275,12 @@ function MisBoletos() {
             )}
 
             {compra.estado_pago === 'pendiente' && compra.requiere_comprobante && (
-              <FormularioComprobante compraId={compra.id} total={compra.total} alSubir={comprobanteSubido} />
+              <>
+                {/* GC-43: cuenta de la cooperativa del viaje, a la que se transfiere o deposita */}
+                <p style={{ margin: '1rem 0 .5rem', fontWeight: 700 }}>Transfiere o deposita a la cuenta de {compra.cooperativa}:</p>
+                <CuentaBancaria cuenta={compra.cuenta_cooperativa} total={compra.total} />
+                <FormularioComprobante compraId={compra.id} total={compra.total} alSubir={comprobanteSubido} />
+              </>
             )}
             {compra.comprobante_url && (
               <p style={{ margin: '1rem 0 0' }}><a href={compra.comprobante_url} target="_blank" rel="noreferrer">Ver el comprobante enviado</a></p>

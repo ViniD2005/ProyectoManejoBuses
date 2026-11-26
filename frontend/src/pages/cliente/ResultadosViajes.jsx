@@ -246,6 +246,8 @@ function TarjetaViaje({ viaje, subida, bajada, pasajeros, abierto, alAlternar })
       <div className="viaje__principal">
         {/* GC-35: ruta destacada por la cooperativa */}
         {viaje.destacado && <span className="viaje__destacado">★ Destacado</span>}
+        {/* GC-43 */}
+        {viaje.pago_en_linea === false && <span className="viaje__solo-ventanilla">Solo venta en ventanilla</span>}
         {/* Lo que más le importa al pasajero: horas y tramo, en grande */}
         <div className="viaje__horas">
           <div>

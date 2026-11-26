@@ -2,13 +2,12 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import api from '../../services/api.js'
 import { useAuth } from '../../context/AuthContext.jsx'
-import { useConfiguracion } from '../../hooks/useConfiguracion.js'
+import CuentaBancaria from '../../components/CuentaBancaria.jsx'
 import { dinero, fechaLarga, horaEnParada } from './formatos.js'
 import './Viajes.css'
 import './Compra.css'
 
 // Datos bancarios por defecto si la configuración no tiene cuenta registrada
-const CUENTA_POR_DEFECTO = 'Banco Pichincha - Cuenta corriente 0000000000 - Pasajes Ecuador'
 const DESCUENTOS_POR_EDAD = ['tercera_edad', 'menor_edad']
 
 function leerSeleccion() {
@@ -62,7 +61,6 @@ function Etapas({ actual }) {
 function Comprar() {
   const { usuario } = useAuth()
   const navigate = useNavigate()
-  const { cuenta_bancaria: cuentaBancaria } = useConfiguracion()
   const [seleccion] = useState(leerSeleccion)
   const [viaje, setViaje] = useState(null)
   const [catalogos, setCatalogos] = useState({ metodos_pago: [], tipos_descuento: [] })
@@ -207,10 +205,11 @@ function Comprar() {
         {!comprobanteEnviado && requiereComprobante && (
           <div className="viajes__tarjeta">
             <h2>Paga y sube tu comprobante</h2>
-            <p>Haz la transferencia o el depósito{metodo ? ` (${metodo.nombre})` : ''} por <strong>{dinero(compra.total)}</strong> a esta cuenta:</p>
+            <p>Haz la transferencia o el depósito{metodo ? ` (${metodo.nombre})` : ''} por <strong>{dinero(compra.total)}</strong> a la cuenta de la cooperativa:</p>
             {/* GC-37: la reserva sin comprobante vence a los 30 minutos */}
             <p className="viajes__aviso" style={{ margin: '0 0 .75rem' }}>Tienes <strong>30 minutos</strong> para subir el comprobante. Si no lo subes a tiempo, la reserva vence y los asientos se liberan.</p>
-            <div className="cuenta">{cuentaBancaria || CUENTA_POR_DEFECTO}</div>
+            {/* GC-43: el pago va a la cuenta de la cooperativa que opera el viaje */}
+            <CuentaBancaria cuenta={compra.cuenta_cooperativa} total={compra.total} />
             <SubirComprobante compraId={compra.id} alSubir={() => { setComprobanteEnviado(true); window.scrollTo({ top: 0, behavior: 'smooth' }) }} />
             <p style={{ margin: '1rem 0 0', color: 'var(--v-suave)', fontSize: '.88rem' }}>
               ¿Todavía no pagas? Puedes subir el comprobante desde <Link to="/mis-boletos">Mis boletos</Link> antes de que venza la reserva.
@@ -370,7 +369,13 @@ function Comprar() {
             <p style={{ color: 'var(--v-suave)', fontSize: '.8rem', margin: '.4rem 0 1rem' }}>
               El total final, con descuentos, lo calcula el sistema al confirmar.
             </p>
-            <button className="viajes__boton viajes__boton--bloque" disabled={enviando}>
+            {/* GC-43: sin cuenta bancaria la cooperativa no recibe pagos en línea */}
+            {viaje && viaje.pago_en_linea === false && (
+              <p className="viajes__error" style={{ margin: '0 0 .75rem' }}>
+                {viaje.cooperativa} todavía no recibe pagos por transferencia o depósito. Puedes comprar este viaje en su ventanilla.
+              </p>
+            )}
+            <button className="viajes__boton viajes__boton--bloque" disabled={enviando || viaje?.pago_en_linea === false}>
               {enviando ? 'Reservando tus asientos…' : 'Confirmar y continuar al pago'}
             </button>
           </div>
