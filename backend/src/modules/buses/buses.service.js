@@ -88,7 +88,7 @@ async function validar(datos, esNuevo) {
     if (!Number.isInteger(cantidad) || cantidad < 10 || cantidad > 80) {
       errores.cantidad_asientos = 'La cantidad de asientos debe estar entre 10 y 80'
     }
-    if (!datos.tipo_asiento_id) errores.tipo_asiento_id = 'Elige el tipo de asiento por defecto'
+    if (!datos.tipo_asiento_id) errores.tipo_asiento_id = 'Elige el tipo de asiento inicial. Si no tienes ninguno, créalo primero en «Tipos de asiento».'
   }
   if (Object.keys(errores).length) throw errorHttp('Revisa los datos marcados del bus', 400, errores)
 }

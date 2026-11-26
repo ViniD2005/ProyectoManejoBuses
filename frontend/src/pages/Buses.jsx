@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import api, { mensajeDeError } from '../services/api.js'
 import Icono from '../components/Icono.jsx'
 import { useDialogo } from '../hooks/useDialogo.jsx'
@@ -53,11 +54,15 @@ export default function Buses() {
   const [texto, setTexto] = useState('')
   const [estado, setEstado] = useState('todos')
   const [dialogo, preguntar] = useDialogo()
+  const navegar = useNavigate()
 
   const cargarBuses = () =>
     api.get('/buses')
       .then(({ data }) => setBuses(data))
       .catch((err) => { setBuses([]); setError(mensajeDeError(err)) })
+
+  // GC-41: los tipos de asiento se vuelven a leer al abrir el formulario (por si se crearon en otra pestaña)
+  const cargarTipos = () => api.get('/tipos-asiento').then(({ data }) => { setTipos(data); return data }).catch(() => tipos)
 
   useEffect(() => {
     cargarBuses()
@@ -80,8 +85,9 @@ export default function Buses() {
     matriculas: buses?.filter((b) => estadoMatricula(b.vence_matricula)).length || 0,
   }), [buses])
 
-  const abrirNuevo = () => {
-    const normal = tipos.find((t) => Number(t.factor_precio) === 1) || tipos[0]
+  const abrirNuevo = async () => {
+    const lista = await cargarTipos()
+    const normal = lista.find((t) => Number(t.factor_precio) === 1) || lista[0]
     setForm({ ...FORM_VACIO, tipo_asiento_id: normal?.id || '' })
     setIdEdicion(null)
     setErrores({})
@@ -349,15 +355,27 @@ export default function Buses() {
                     {campo('cantidad_asientos', 'Cantidad de asientos', { type: 'number', min: 10, max: 80 }, 'Entre 10 y 80')}
                     <div className={`campo ${errores.tipo_asiento_id ? 'campo--error' : ''}`}>
                       <label className="campo__etiqueta" htmlFor="bus-tipo">Tipo de asiento inicial</label>
-                      <select id="bus-tipo" name="tipo_asiento_id" value={form.tipo_asiento_id} onChange={cambiar}>
-                        <option value="">Elige un tipo</option>
-                        {tipos.map((t) => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+                      <select id="bus-tipo" name="tipo_asiento_id" value={form.tipo_asiento_id} onChange={cambiar} disabled={!tipos.length}>
+                        {!tipos.length && <option value="">No tienes tipos de asiento</option>}
+                        {tipos.length > 0 && !form.tipo_asiento_id && <option value="">Elige un tipo</option>}
+                        {tipos.map((t) => <option key={t.id} value={t.id}>{t.nombre} (precio × {Number(t.factor_precio).toFixed(2)})</option>)}
                       </select>
                       {errores.tipo_asiento_id
                         ? <span className="campo__error">{errores.tipo_asiento_id}</span>
-                        : <span className="campo__ayuda">Luego pinta los VIP en «Estructura de asientos»</span>}
+                        : tipos.length > 0 && <span className="campo__ayuda">Todos los asientos empiezan con este tipo; luego marcas los VIP en «Estructura de asientos».</span>}
                     </div>
                   </div>
+                  {/* GC-41: sin tipos de asiento no se puede crear el bus: se explica qué hacer */}
+                  {!tipos.length && (
+                    <div className="alerta alerta--aviso" role="alert">
+                      <Icono nombre="alerta" />
+                      <div>
+                        <b>Primero crea un tipo de asiento</b>
+                        <div>Los asientos del bus se crean con un tipo (por ejemplo «Normal»). Crea al menos uno y vuelve a registrar el bus.</div>
+                        <button type="button" className="btn btn-sm" style={{ marginTop: '.5rem' }} onClick={() => navegar('/cooperativa/tipos-asiento')}>Ir a Tipos de asiento</button>
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
 
@@ -399,7 +417,7 @@ export default function Buses() {
             </div>
             <div className="panel__pie">
               <button type="button" className="btn" onClick={cerrar}>Cancelar</button>
-              <button className="btn btn-primary" disabled={guardando}>{guardando ? 'Guardando…' : idEdicion ? 'Guardar cambios' : 'Registrar bus'}</button>
+              <button className="btn btn-primary" disabled={guardando || (!idEdicion && !tipos.length)}>{guardando ? 'Guardando…' : idEdicion ? 'Guardar cambios' : 'Registrar bus'}</button>
             </div>
           </form>
         </div>
