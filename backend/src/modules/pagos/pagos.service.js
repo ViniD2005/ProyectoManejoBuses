@@ -84,7 +84,9 @@ async function validar(oficinista, compraId, { aprobado, motivo }) {
     const compra = rows[0]
     if (!compra) throw errorHttp('Compra no encontrada en tu cooperativa', 404)
     if (compra.estado_pago !== 'en_revision') {
-      throw errorHttp(`Solo se validan compras en revisión; esta está "${compra.estado_pago}"`, 409)
+      // GC-32: estado en palabras, no el código interno
+      const ESTADO = { pendiente: 'todavía no tiene comprobante', aprobado: 'ya fue aprobada', rechazado: 'ya fue rechazada' }
+      throw errorHttp(`Solo se validan compras con comprobante en revisión: esta compra ${ESTADO[compra.estado_pago] || 'no está en revisión'}`, 409)
     }
 
     const nuevoEstado = aprobado ? 'aprobado' : 'rechazado'

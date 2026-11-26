@@ -18,6 +18,9 @@ const DUPLICADOS = {
     'hora_salida', 'Ya tienes una frecuencia con el mismo origen, destino y hora de salida',
   ],
   viaje_frecuencia_id_fecha_key: ['fecha', 'Esa frecuencia ya tiene un viaje programado en esa fecha'],
+  // GC-32: mensajes claros para las reglas nuevas de la base
+  viaje_un_curso_por_chofer: ['viaje', 'Ya tienes otro viaje en curso. Finalízalo antes de iniciar uno nuevo.'],
+  acceso_pasajero_boleto_id_key: ['codigo', 'Este boleto ya se registró al abordar'],
 }
 
 function respuestaBaseDeDatos(err) {
