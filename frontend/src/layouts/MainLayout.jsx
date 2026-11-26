@@ -65,10 +65,8 @@ const MENU = {
   personal_bus: [
     // GC-9: panel de inicio
     { grupo: 'General', enlaces: [{ a: '/panel', texto: 'Inicio', icono: 'inicio' }] },
-    // GC-34: sección del chofer
     { grupo: 'En el bus', enlaces: [
-      { a: '/chofer', texto: 'Viajes de hoy', icono: 'bus' },
-      { a: '/chofer/historial', texto: 'Mi historial', icono: 'documento' },
+      { a: '/personal/abordaje', texto: 'Abordaje', icono: 'qr' },
     ] },
   ],
 }
@@ -175,13 +173,14 @@ function MainLayout() {
           </nav>
 
           <div className="app__pie-lateral">
-            <div className="app__usuario">
+            {/* GC-36: el nombre abre Mi cuenta */}
+            <NavLink to="/mi-cuenta" className="app__usuario" title="Mi cuenta" onClick={() => setMenuAbierto(false)}>
               <span className="avatar">{iniciales(usuario)}</span>
               <div>
                 <strong>{usuario.nombres} {usuario.apellidos}</strong>
-                <span>{NOMBRE_ROL[usuario.rol]}</span>
+                <span>{NOMBRE_ROL[usuario.rol]} · Mi cuenta</span>
               </div>
-            </div>
+            </NavLink>
             <button type="button" className="app__salir" onClick={salir}>
               <Icono nombre="salir" tam={18} /> Cerrar sesión
             </button>
@@ -195,7 +194,7 @@ function MainLayout() {
               <Icono nombre="menu" />
             </button>
             <div className="app__superior-titulo">
-              <span>{NOMBRE_ROL[usuario.rol]} / </span>{actual?.texto || 'Panel'}
+              <span>{NOMBRE_ROL[usuario.rol]} / </span>{actual?.texto || (location.pathname === '/mi-cuenta' ? 'Mi cuenta' : 'Panel')}
             </div>
             <div className="app__superior-acciones">
               <Notificaciones />
@@ -276,6 +275,10 @@ function MenuUsuario({ usuario, onSalir }) {
           </Link>
           <Link to="/viajes" className="desplegable__opcion" onClick={() => setAbierto(false)}>
             <Icono nombre="buscar" tam={18} /> Buscar pasajes
+          </Link>
+          {/* GC-36 */}
+          <Link to="/mi-cuenta" className="desplegable__opcion" onClick={() => setAbierto(false)}>
+            <Icono nombre="usuario" tam={18} /> Mi cuenta
           </Link>
           <button type="button" className="desplegable__opcion desplegable__opcion--peligro" onClick={onSalir}>
             <Icono nombre="salir" tam={18} /> Cerrar sesión

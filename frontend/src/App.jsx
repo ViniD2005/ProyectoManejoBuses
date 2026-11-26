@@ -40,6 +40,8 @@ import HojaRuta from './pages/cooperativa/HojaRuta.jsx'
 
 // Frente E - Mis boletos
 import MisBoletos from './pages/cliente/MisBoletos.jsx'
+// GC-36 - Mi cuenta (todos los roles)
+import MiCuenta from './pages/cuenta/MiCuenta.jsx'
 
 // Frente D - Busqueda de viajes y asientos
 import BuscarViajes from './pages/cliente/BuscarViajes.jsx'
@@ -50,9 +52,7 @@ import SeleccionAsientos from './pages/cliente/SeleccionAsientos.jsx'
 // Frente E - Compra de boletos
 import Comprar from './pages/cliente/Comprar.jsx'
 // CC-15 - Personal del bus
-import ViajesHoy from './pages/chofer/ViajesHoy.jsx'
-import ViajeEnCurso from './pages/chofer/ViajeEnCurso.jsx'
-import HistorialChofer from './pages/chofer/Historial.jsx'
+import Abordaje from './pages/personal/Abordaje.jsx'
 // CC-24 - Apariencia de cada cooperativa
 import MiCooperativa from './pages/cooperativa/MiCooperativa.jsx'
 // GC-9 - Panel de inicio del personal de la cooperativa
@@ -105,11 +105,9 @@ function App() {
           <Route path="/panel" element={<PanelInicio />} />
         </Route>
         
-        {/* GC-34 - Sección del chofer (solo personal_bus) */}
+        {/* CC-15 - Personal del bus (solo personal_bus) */}
         <Route element={<RutaProtegida roles={['personal_bus']} />}>
-          <Route path="/chofer" element={<ViajesHoy />} />
-          <Route path="/chofer/viaje/:id" element={<ViajeEnCurso />} />
-          <Route path="/chofer/historial" element={<HistorialChofer />} />
+          <Route path="/personal/abordaje" element={<Abordaje />} />
         </Route>
         {/* Frente E - Mis boletos (solo cliente) */}
         <Route element={<RutaProtegida roles={['cliente']} />}>
@@ -125,6 +123,11 @@ function App() {
         {/* Frente E - Compra (solo cliente) */}
         <Route element={<RutaProtegida roles={['cliente']} />}>
           <Route path="/comprar" element={<Comprar />} />
+        </Route>
+
+        {/* GC-36 - Mi cuenta (cualquier usuario con sesión) */}
+        <Route element={<RutaProtegida />}>
+          <Route path="/mi-cuenta" element={<MiCuenta />} />
         </Route>
       </Route>
 
