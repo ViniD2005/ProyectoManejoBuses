@@ -255,8 +255,6 @@ function PanelCooperativa({ cooperativa, alCerrar, alGuardar }) {
     ? { nombre: cooperativa.nombre, ruc: cooperativa.ruc, telefono: cooperativa.telefono || '', email: cooperativa.email || '', direccion: cooperativa.direccion || '' }
     : VACIO)
   const [paso, setPaso] = useState(1)
-  const [modo, setModo] = useState('registrado')
-  const [usuarioId, setUsuarioId] = useState(null)
   const [nuevo, setNuevo] = useState(NUEVO_VACIO)
   const [errores, setErrores] = useState({})
   const [error, setError] = useState('')
@@ -300,18 +298,14 @@ function PanelCooperativa({ cooperativa, alCerrar, alGuardar }) {
     e.preventDefault()
     if (!editando && paso === 1) return siguiente()
     setError('')
-    if (!editando && modo === 'registrado' && !usuarioId) {
-      setErrores({ ...errores, responsable: 'Busca y elige al usuario que administrará la cooperativa' })
-      return
-    }
     setEnviando(true)
     try {
       if (editando) {
         const { data } = await api.put(`/cooperativas/${cooperativa.id}`, form)
         alGuardar(`Los datos de ${data.nombre} se actualizaron.`)
       } else {
-        const responsable = modo === 'registrado' ? { usuario_id: usuarioId } : { nuevo }
-        const { data } = await api.post('/cooperativas', { ...form, responsable })
+        // GC-30: el responsable siempre es una cuenta nueva que se crea con la cooperativa
+        const { data } = await api.post('/cooperativas', { ...form, responsable: { nuevo } })
         const r = data.responsables[0]
         alGuardar(`${data.nombre} quedó registrada. ${r ? `${r.nombres} ${r.apellidos} ya puede administrarla iniciando sesión con ${r.email}.` : ''}`)
       }
@@ -349,7 +343,7 @@ function PanelCooperativa({ cooperativa, alCerrar, alGuardar }) {
             <p>
               {editando
                 ? 'Actualiza los datos de contacto de la cooperativa.'
-                : paso === 1 ? 'Primero, los datos de la cooperativa.' : 'Ahora, elige quién la administrará.'}
+                : paso === 1 ? 'Primero, los datos de la cooperativa.' : 'Ahora, crea la cuenta de quien la administrará.'}
             </p>
           </div>
           <button type="button" className="btn btn--fantasma btn--icono" onClick={alCerrar} aria-label="Cerrar">✕</button>
@@ -379,30 +373,24 @@ function PanelCooperativa({ cooperativa, alCerrar, alGuardar }) {
               <span className="etiqueta-seccion">Usuario responsable</span>
               <p className="texto-suave" style={{ fontSize: '.88rem' }}>
                 Es quien entrará al panel de la cooperativa para registrar buses, frecuencias, personal y su apariencia.
+                Se crea su cuenta en este momento: debe ser una persona que <b>no tenga cuenta</b> en el sistema.
               </p>
-              <div className="pestanas" role="tablist">
-                <button type="button" role="tab" aria-selected={modo === 'registrado'} onClick={() => setModo('registrado')}>Usuario registrado</button>
-                <button type="button" role="tab" aria-selected={modo === 'nuevo'} onClick={() => setModo('nuevo')}>Crear cuenta nueva</button>
-              </div>
-              {errores.responsable && modo === 'nuevo' && <div className="alerta alerta--error">{errores.responsable}</div>}
+              {errores.responsable && <div className="alerta alerta--error">{errores.responsable}</div>}
 
-              {modo === 'registrado' ? (
-                <BuscadorCandidatos elegido={usuarioId} alElegir={(id) => { setUsuarioId(id); setErrores({ ...errores, responsable: '' }) }} error={errores.responsable} />
-              ) : (
-                <>
-                  <Campo nombre="responsable_cedula" etiqueta="Cédula" valor={nuevo.cedula} alCambiar={cambiarNuevo} error={errores.responsable_cedula} inputMode="numeric" placeholder="10 dígitos" />
-                  <div className="rejilla-2">
-                    <Campo nombre="responsable_nombres" etiqueta="Nombres" valor={nuevo.nombres} alCambiar={cambiarNuevo} error={errores.responsable_nombres} />
-                    <Campo nombre="responsable_apellidos" etiqueta="Apellidos" valor={nuevo.apellidos} alCambiar={cambiarNuevo} error={errores.responsable_apellidos} />
-                  </div>
-                  <div className="rejilla-2">
-                    <Campo nombre="responsable_email" etiqueta="Correo (para iniciar sesión)" valor={nuevo.email} alCambiar={cambiarNuevo} error={errores.responsable_email} type="email" />
-                    <Campo nombre="responsable_telefono" etiqueta="Celular (opcional)" valor={nuevo.telefono} alCambiar={cambiarNuevo} error={errores.responsable_telefono} inputMode="tel" />
-                  </div>
-                  <Campo nombre="responsable_password" etiqueta="Contraseña inicial" valor={nuevo.password} alCambiar={cambiarNuevo} error={errores.responsable_password}
-                    type="password" autoComplete="new-password" ayuda="Mínimo 8 caracteres, con mayúscula, minúscula y número." />
-                </>
-              )}
+              {/* GC-30: solo cuenta nueva (ya no se elige un usuario registrado) */}
+              <>
+                <Campo nombre="responsable_cedula" etiqueta="Cédula" valor={nuevo.cedula} alCambiar={cambiarNuevo} error={errores.responsable_cedula} inputMode="numeric" placeholder="10 dígitos" />
+                <div className="rejilla-2">
+                  <Campo nombre="responsable_nombres" etiqueta="Nombres" valor={nuevo.nombres} alCambiar={cambiarNuevo} error={errores.responsable_nombres} />
+                  <Campo nombre="responsable_apellidos" etiqueta="Apellidos" valor={nuevo.apellidos} alCambiar={cambiarNuevo} error={errores.responsable_apellidos} />
+                </div>
+                <div className="rejilla-2">
+                  <Campo nombre="responsable_email" etiqueta="Correo (para iniciar sesión)" valor={nuevo.email} alCambiar={cambiarNuevo} error={errores.responsable_email} type="email" />
+                  <Campo nombre="responsable_telefono" etiqueta="Celular (opcional)" valor={nuevo.telefono} alCambiar={cambiarNuevo} error={errores.responsable_telefono} inputMode="tel" />
+                </div>
+                <Campo nombre="responsable_password" etiqueta="Contraseña inicial" valor={nuevo.password} alCambiar={cambiarNuevo} error={errores.responsable_password}
+                  type="password" autoComplete="new-password" ayuda="Mínimo 8 caracteres, con mayúscula, minúscula y número. Entrégasela al responsable." />
+              </>
             </div>
           )}
         </div>
