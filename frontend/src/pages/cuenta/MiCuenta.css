@@ -1,0 +1,16 @@
+/* GC-36 - Mi cuenta */
+.mi-cuenta { max-width: 1000px; }
+.mi-cuenta__rejilla { display: grid; gap: 1.5rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); align-items: start; }
+.mi-cuenta__rejilla .card { margin-bottom: 0; }
+.mi-cuenta__fijos { display: grid; gap: 0.5rem; margin: 0 0 0.5rem; }
+.mi-cuenta__fijos div { display: flex; justify-content: space-between; gap: 1rem; padding: 0.55rem 0; border-bottom: 1px solid var(--borde); }
+.mi-cuenta__fijos dt { color: var(--texto-suave); font-weight: 600; }
+.mi-cuenta__fijos dd { margin: 0; font-weight: 650; text-align: right; word-break: break-all; }
+.mi-cuenta__nota { color: var(--texto-suave); font-size: 0.84rem; margin: 0 0 1.25rem; }
+.mi-cuenta__requisitos { list-style: none; padding: 0; margin: -0.25rem 0 1rem; display: grid; gap: 0.25rem; font-size: 0.82rem; color: var(--texto-suave); }
+.mi-cuenta__requisitos li { display: flex; align-items: center; gap: 0.35rem; }
+.mi-cuenta__requisitos li.cumple { color: var(--exito); font-weight: 650; }
+
+/* Acceso a Mi cuenta desde el menú lateral del personal */
+a.app__usuario { padding: 0.45rem; margin: 0 -0.45rem 0.75rem; border-radius: 12px; text-decoration: none; transition: background 0.15s; }
+a.app__usuario:hover, a.app__usuario.active { background: rgba(255, 255, 255, 0.1); text-decoration: none; }
