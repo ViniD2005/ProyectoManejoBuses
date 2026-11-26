@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import api from '../../services/api.js'
 import IconoBus from './IconoBus.jsx'
 import { dinero, fechaLarga, horaEnParada } from './formatos.js'
@@ -18,6 +18,27 @@ const NOMBRE_BOLETO = {
   emitido: 'Listo para viajar',
   usado: 'Usado',
   anulado: 'Anulado',
+}
+
+/*
+  GC-31: las compras se ordenan en tres pestañas, como en una app de viajes real:
+    · Próximos viajes → pagadas y con viaje de hoy en adelante
+    · Por pagar       → pendientes, en revisión o rechazadas (con viaje de hoy en adelante)
+    · Historial       → viajes que ya pasaron y reservas vencidas
+*/
+// "viernes, 27 de noviembre" -> "Viernes, 27 de noviembre" (sin poner en mayúscula el "de")
+const mayusculaInicial = (texto) => texto.charAt(0).toUpperCase() + texto.slice(1)
+const hoyEcuador = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Guayaquil' })
+const esVencida = (c) => c.estado_pago === 'rechazado' && /^reserva vencida/i.test(c.motivo_rechazo || '')
+function grupoDe(compra, hoy) {
+  if (compra.fecha_viaje < hoy || esVencida(compra)) return 'historial'
+  return compra.estado_pago === 'aprobado' ? 'proximos' : 'pagar'
+}
+const PESTANAS = [['proximos', 'Próximos viajes'], ['pagar', 'Por pagar'], ['historial', 'Historial']]
+const VACIO_PESTANA = {
+  proximos: ['No tienes viajes próximos', 'Cuando un pago sea aprobado, tus boletos aparecerán aquí.'],
+  pagar: ['No tienes pagos pendientes', 'Todo está al día.'],
+  historial: ['Tu historial está vacío', 'Aquí verás los viajes que ya realizaste.'],
 }
 
 function mensajeDeError(err) {
@@ -131,7 +152,8 @@ function MisBoletos() {
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState('')
   const [aviso, setAviso] = useState('')
-  const [filtro, setFiltro] = useState('todas')
+  const [pestana, setPestana] = useState(null) // null = se elige sola al cargar
+  const navegar = useNavigate()
 
   const cargar = () =>
     api.get('/compras/mias')
@@ -148,8 +170,14 @@ function MisBoletos() {
     cargar()
   }
 
-  const porPagar = compras.filter((c) => c.estado_pago === 'pendiente' || c.estado_pago === 'rechazado').length
-  const visibles = compras.filter((c) => filtro === 'todas' || (filtro === 'pagar' ? ['pendiente', 'rechazado'].includes(c.estado_pago) : c.estado_pago === 'aprobado'))
+  const hoy = hoyEcuador()
+  const conteo = { proximos: 0, pagar: 0, historial: 0 }
+  compras.forEach((c) => { conteo[grupoDe(c, hoy)] += 1 })
+  // Si hay algo por pagar se abre esa pestaña primero
+  const activa = pestana || (conteo.pagar > 0 ? 'pagar' : 'proximos')
+  const visibles = compras
+    .filter((c) => grupoDe(c, hoy) === activa)
+    .sort((a, b) => (activa === 'historial' ? b.fecha_viaje.localeCompare(a.fecha_viaje) : a.fecha_viaje.localeCompare(b.fecha_viaje)))
 
   return (
     <section className="viajes" style={{ maxWidth: 900 }}>
@@ -158,17 +186,26 @@ function MisBoletos() {
           <h1>Mis boletos</h1>
           <p className="viajes__sub" style={{ margin: 0 }}>Tus compras, el estado de cada pago y tus boletos con código QR.</p>
         </div>
-        <Link to="/viajes" className="viajes__boton">Comprar un pasaje</Link>
+        <button type="button" className="viajes__boton" onClick={() => navegar('/viajes')}>Comprar un pasaje</button>
       </div>
 
       {error && <p role="alert" className="viajes__error">{error}</p>}
       {aviso && <p role="status" className="viajes__aviso">{aviso}</p>}
 
       {compras.length > 0 && (
-        <div className="pisos" role="tablist">
-          {[['todas', `Todas (${compras.length})`], ['pagar', `Por pagar (${porPagar})`], ['listas', 'Pagadas']].map(([valor, texto]) => (
-            <button key={valor} type="button" role="tab" aria-selected={filtro === valor} onClick={() => setFiltro(valor)}>{texto}</button>
+        <div className="pisos" role="tablist" aria-label="Mis compras">
+          {PESTANAS.map(([valor, texto]) => (
+            <button key={valor} type="button" role="tab" aria-selected={activa === valor} onClick={() => setPestana(valor)}>
+              {texto} ({conteo[valor]})
+            </button>
           ))}
+        </div>
+      )}
+
+      {!cargando && compras.length > 0 && visibles.length === 0 && (
+        <div className="viajes__vacio">
+          <strong>{VACIO_PESTANA[activa][0]}</strong>
+          <span>{VACIO_PESTANA[activa][1]}</span>
         </div>
       )}
 
@@ -179,7 +216,7 @@ function MisBoletos() {
           <span className="viajes__vacio-icono"><IconoBus /></span>
           <strong>Todavía no tienes compras</strong>
           <span>Cuando compres un pasaje, aquí verás tus boletos.</span>
-          <Link to="/viajes" className="viajes__boton" style={{ marginTop: '.5rem' }}>Buscar un viaje</Link>
+          <button type="button" className="viajes__boton" style={{ marginTop: '.5rem' }} onClick={() => navegar('/viajes')}>Buscar un viaje</button>
         </div>
       )}
 
@@ -188,16 +225,21 @@ function MisBoletos() {
           <header className="compra__cabecera">
             <div>
               <h2>{compra.origen} → {compra.destino}</h2>
-              <p style={{ textTransform: 'capitalize' }}>
-                {fechaLarga(compra.fecha_viaje)} · {horaEnParada(compra.hora_salida)} · {compra.cooperativa}
+              <p>
+                {mayusculaInicial(fechaLarga(compra.fecha_viaje))} · {horaEnParada(compra.hora_salida)} · {compra.cooperativa}
               </p>
             </div>
-            <span className={`estado estado--${compra.estado_pago}`}>{NOMBRE_ESTADO[compra.estado_pago] || compra.estado_pago}</span>
+            <span className={`estado estado--${compra.estado_pago}`}>{esVencida(compra) ? 'Reserva vencida' : NOMBRE_ESTADO[compra.estado_pago] || compra.estado_pago}</span>
           </header>
 
           <div className="compra__cuerpo">
-            {compra.estado_pago === 'rechazado' && compra.motivo_rechazo && (
+            {esVencida(compra) ? (
+              <p className="viajes__error">La reserva venció porque no se pagó a tiempo y los asientos se liberaron. Puedes comprar de nuevo si aún hay cupo.</p>
+            ) : compra.estado_pago === 'rechazado' && compra.motivo_rechazo && (
               <p className="viajes__error">El pago fue rechazado: {compra.motivo_rechazo}</p>
+            )}
+            {compra.estado_pago === 'en_revision' && (
+              <p className="viajes__aviso">Recibimos tu comprobante. Un oficinista lo está revisando; te avisaremos cuando tus boletos estén listos.</p>
             )}
 
             <div className="boletos">
