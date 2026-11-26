@@ -42,7 +42,13 @@ async function obtenerCatalogos() {
   En ese caso el pago es en efectivo, la compra queda aprobada y los boletos emitidos,
   y el viaje debe ser de la cooperativa del oficinista.
 */
+/*
+  GC-34 - opciones.aBordo (venta del chofer dentro del bus): el viaje debe estar
+  EN CURSO y manejado por ese chofer; el pago es en efectivo y los boletos quedan
+  como "usados" porque el pasajero ya está a bordo.
+*/
 async function crear(clienteId, datos, opciones = {}) {
+  const aBordo = Boolean(opciones.aBordo)
   const ventanilla = opciones.vendidoPor || null
   const pasajeros = Array.isArray(datos.pasajeros) ? datos.pasajeros : []
   if (!datos.viaje_id || !datos.subida || !datos.bajada || !datos.metodo_pago_id) {
@@ -73,7 +79,7 @@ async function crear(clienteId, datos, opciones = {}) {
   return transaccion(async (cliente) => {
     // Tramo solicitado: orden de subida y bajada, y precio para asiento normal
     const tramo = await cliente.query(
-      `SELECT v.id, v.fecha::text AS fecha, v.estado, v.bus_id, f.cooperativa_id,
+      `SELECT v.id, v.fecha::text AS fecha, v.estado, v.bus_id, v.chofer_id, f.cooperativa_id,
               po.orden AS orden_subida, pd.orden AS orden_bajada,
               (pd.precio_acumulado - po.precio_acumulado) AS precio_normal
          FROM viaje v
@@ -85,7 +91,12 @@ async function crear(clienteId, datos, opciones = {}) {
     )
     const viaje = tramo.rows[0]
     if (!viaje) throw errorHttp('Viaje o tramo no encontrado', 404)
-    if (viaje.estado !== 'programado') throw errorHttp('Este viaje ya no está disponible para la venta', 409)
+    if (aBordo) {
+      if (viaje.estado !== 'en_curso') throw errorHttp('Solo puedes vender a bordo cuando el viaje está en curso', 409)
+      if (viaje.chofer_id !== ventanilla.id) throw errorHttp('Solo el chofer que inició el viaje puede vender a bordo', 403)
+    } else if (viaje.estado !== 'programado') {
+      throw errorHttp('Este viaje ya no está disponible para la venta', 409)
+    }
     const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Guayaquil' })
     if (viaje.fecha < hoy) throw errorHttp('No se pueden comprar boletos de viajes pasados', 409)
     if (ventanilla && viaje.cooperativa_id !== ventanilla.cooperativa_id) {
@@ -156,10 +167,10 @@ async function crear(clienteId, datos, opciones = {}) {
 
     const total = redondear(boletos.reduce((suma, b) => suma + b.precio_final, 0))
     const compra = await cliente.query(
-      `INSERT INTO compra (cliente_id, metodo_pago_id, total, estado_pago, vendido_por, validado_por, validado_en)
-       VALUES ($1, $2, $3, $4, $5, $5, CASE WHEN $5::int IS NULL THEN NULL ELSE NOW() END)
+      `INSERT INTO compra (cliente_id, metodo_pago_id, total, estado_pago, vendido_por, validado_por, validado_en, a_bordo)
+       VALUES ($1, $2, $3, $4, $5, $5, CASE WHEN $5::int IS NULL THEN NULL ELSE NOW() END, $6)
        RETURNING id, total, estado_pago, creado_en`,
-      [clienteId, datos.metodo_pago_id, total, ventanilla ? 'aprobado' : 'pendiente', ventanilla ? ventanilla.id : null]
+      [clienteId, datos.metodo_pago_id, total, ventanilla ? 'aprobado' : 'pendiente', ventanilla ? ventanilla.id : null, aBordo]
     )
     const compraId = compra.rows[0].id
 
@@ -173,9 +184,13 @@ async function crear(clienteId, datos, opciones = {}) {
          RETURNING id, codigo, estado`,
         [compraId, viaje.id, b.asiento_id, b.pasajero_cedula, b.pasajero_nombre, b.tipo_descuento_id,
           viaje.orden_subida, viaje.orden_bajada, b.precio_base, b.descuento, b.precio_final,
-          ventanilla ? 'emitido' : 'reservado']
+          aBordo ? 'usado' : ventanilla ? 'emitido' : 'reservado']
       )
       Object.assign(b, rows[0])
+      // GC-34: quien compra a bordo ya está dentro del bus: queda registrado su abordaje
+      if (aBordo) {
+        await cliente.query('INSERT INTO acceso_pasajero (boleto_id, registrado_por) VALUES ($1, $2)', [rows[0].id, ventanilla.id])
+      }
     }
 
     // Notificación al cliente (CC-11)
@@ -183,7 +198,10 @@ async function crear(clienteId, datos, opciones = {}) {
       await notificar(cliente, clienteId, `Compra N.º ${compraId} registrada`,
         `Reservaste ${boletos.length} asiento(s) por $${total.toFixed(2)}. ` +
         'Realiza el pago y sube el comprobante desde Mis boletos.')
-    } else if (clienteId !== ventanilla.id) {
+    } else if (aBordo && clienteId !== ventanilla.id) {
+      await notificar(cliente, clienteId, `Compra N.º ${compraId} a bordo`,
+        `Compraste ${boletos.length} boleto(s) a bordo del bus, pagados en efectivo.`)
+    } else if (!aBordo && clienteId !== ventanilla.id) {
       await notificar(cliente, clienteId, `Compra N.º ${compraId} en ventanilla`,
         `Se emitieron ${boletos.length} boleto(s) pagados en efectivo. Descárgalos desde Mis boletos.`)
     }
@@ -292,7 +310,7 @@ async function subirComprobante(clienteId, compraId, archivo, referencia) {
   Si la cédula del primer pasajero es de un cliente registrado, la compra queda en su
   historial (Mis boletos); si no, queda registrada a nombre del oficinista que vendió.
 */
-async function venderEnVentanilla(oficinista, datos) {
+async function venderEnVentanilla(oficinista, datos, opciones = {}) {
   const efectivo = await pool.query("SELECT id FROM metodo_pago WHERE codigo = 'efectivo' AND activo")
   if (!efectivo.rows[0]) throw errorHttp('El pago en efectivo no está habilitado', 409)
 
@@ -304,8 +322,11 @@ async function venderEnVentanilla(oficinista, datos) {
   )
   const clienteId = registrado.rows[0]?.id || oficinista.id
 
-  return crear(clienteId, { ...datos, metodo_pago_id: efectivo.rows[0].id }, { vendidoPor: oficinista })
+  return crear(clienteId, { ...datos, metodo_pago_id: efectivo.rows[0].id }, { vendidoPor: oficinista, aBordo: Boolean(opciones.aBordo) })
 }
+
+// GC-34: venta del chofer dentro del bus (misma lógica que la ventanilla, con el viaje en curso)
+const venderABordo = (chofer, datos) => venderEnVentanilla(chofer, datos, { aBordo: true })
 
 /*
   GC-15: datos de un pasajero ya registrado, para precargarlos en la compra.
@@ -380,5 +401,5 @@ async function ventasDelDia(oficinista) {
 
 module.exports = {
   buscarPasajero, obtenerCatalogos, crear, listarMias, subirComprobante, venderEnVentanilla,
-  viajesVentanilla, ventasDelDia,
+  viajesVentanilla, ventasDelDia, venderABordo,
 }

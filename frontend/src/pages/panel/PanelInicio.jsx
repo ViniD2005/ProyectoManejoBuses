@@ -45,7 +45,9 @@ const ACCESOS = {
     { a: '/oficinista/pagos', texto: 'Validar pagos', detalle: 'Revisa los comprobantes de los clientes', icono: 'tarjeta' },
   ],
   personal_bus: [
-    { a: '/personal/abordaje', texto: 'Abordaje', detalle: 'Escanea el código QR de cada boleto', icono: 'qr' },
+    // GC-34: sección del chofer
+    { a: '/chofer', texto: 'Viajes de hoy', detalle: 'Inicia tu viaje, valida boletos y vende a bordo', icono: 'bus' },
+    { a: '/chofer/historial', texto: 'Mi historial', detalle: 'Viajes realizados y lo cobrado a bordo', icono: 'documento' },
   ],
 }
 

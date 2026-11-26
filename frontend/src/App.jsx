@@ -50,7 +50,9 @@ import SeleccionAsientos from './pages/cliente/SeleccionAsientos.jsx'
 // Frente E - Compra de boletos
 import Comprar from './pages/cliente/Comprar.jsx'
 // CC-15 - Personal del bus
-import Abordaje from './pages/personal/Abordaje.jsx'
+import ViajesHoy from './pages/chofer/ViajesHoy.jsx'
+import ViajeEnCurso from './pages/chofer/ViajeEnCurso.jsx'
+import HistorialChofer from './pages/chofer/Historial.jsx'
 // CC-24 - Apariencia de cada cooperativa
 import MiCooperativa from './pages/cooperativa/MiCooperativa.jsx'
 // GC-9 - Panel de inicio del personal de la cooperativa
@@ -103,9 +105,11 @@ function App() {
           <Route path="/panel" element={<PanelInicio />} />
         </Route>
         
-        {/* CC-15 - Personal del bus (solo personal_bus) */}
+        {/* GC-34 - Sección del chofer (solo personal_bus) */}
         <Route element={<RutaProtegida roles={['personal_bus']} />}>
-          <Route path="/personal/abordaje" element={<Abordaje />} />
+          <Route path="/chofer" element={<ViajesHoy />} />
+          <Route path="/chofer/viaje/:id" element={<ViajeEnCurso />} />
+          <Route path="/chofer/historial" element={<HistorialChofer />} />
         </Route>
         {/* Frente E - Mis boletos (solo cliente) */}
         <Route element={<RutaProtegida roles={['cliente']} />}>

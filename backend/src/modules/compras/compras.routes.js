@@ -12,7 +12,7 @@ rutas.get('/catalogos', controlador.catalogos)
 rutas.post('/', autenticar, permitirRoles('cliente'), controlador.crear)
 rutas.get('/mias', autenticar, permitirRoles('cliente'), controlador.listarMias)
 // GC-15: datos de un pasajero registrado (?cedula=) para precargarlos
-rutas.get('/pasajero', autenticar, permitirRoles('cliente', 'oficinista'), controlador.buscarPasajero)
+rutas.get('/pasajero', autenticar, permitirRoles('cliente', 'oficinista', 'personal_bus'), controlador.buscarPasajero)
 
 // Subir comprobante de pago (campo "comprobante" del formulario)
 rutas.post('/:id/comprobante', autenticar, permitirRoles('cliente'), subirComprobante, controlador.subirComprobante)

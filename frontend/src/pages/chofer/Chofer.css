@@ -1,0 +1,25 @@
+/* GC-34 - Sección del chofer */
+.chofer__viajes { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); }
+.chofer__viaje { display: grid; gap: 0.6rem; padding: 1.1rem; background: var(--superficie); border: 1px solid var(--borde); border-radius: var(--radio); }
+.chofer__viaje--mio { border: 2px solid var(--marca); box-shadow: var(--sombra-sm); }
+.chofer__hora { font-size: 1.6rem; font-weight: 800; line-height: 1; }
+.chofer__ruta { font-weight: 700; font-size: 1.05rem; }
+.chofer__dato { color: var(--texto-suave); font-size: 0.88rem; }
+.chofer__cifras { display: flex; gap: 1rem; flex-wrap: wrap; font-size: 0.88rem; color: var(--texto-suave); }
+.chofer__cifras b { color: var(--texto); font-size: 1rem; }
+
+.chofer__resultado { display: grid; gap: 0.3rem; padding: 1.25rem; border-radius: var(--radio); border: 2px solid; margin-top: 1rem; }
+.chofer__resultado--ok { background: var(--exito-fondo); border-color: var(--exito); color: #115e2f; }
+.chofer__resultado--mal { background: var(--error-fondo); border-color: var(--error); color: #8c241c; }
+.chofer__resultado h2 { margin: 0; font-size: 1.3rem; }
+.chofer__lector { width: 100%; max-width: 360px; margin-bottom: 0.75rem; border-radius: var(--radio); overflow: hidden; }
+.chofer__manual { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 1rem; }
+.chofer__manual .form-control { flex: 1 1 260px; }
+
+.chofer__venta { display: grid; gap: 1.5rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); align-items: start; }
+.chofer__pasajero { display: grid; gap: 0.6rem; padding: 1rem; border: 1px solid var(--borde); border-radius: var(--radio); margin-bottom: 0.75rem; }
+.chofer__pasajero legend { font-weight: 700; padding: 0 0.3rem; }
+.chofer__total { display: flex; justify-content: space-between; align-items: baseline; font-size: 1.1rem; margin: 0.75rem 0; }
+.chofer__total strong { font-size: 1.5rem; }
+.chofer__vuelto { font-size: 1.2rem; font-weight: 800; color: var(--exito); }
+.chofer__error { color: var(--error); font-size: 0.85rem; font-weight: 600; }

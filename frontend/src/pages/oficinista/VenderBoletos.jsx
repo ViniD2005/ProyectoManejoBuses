@@ -39,7 +39,7 @@ async function abrirPdf(url, alFallar) {
 }
 
 // Mapa del bus con la estructura real (fila/columna); sin estructura, filas de 2 + 2
-function MapaBus({ asientos, elegidos, alElegir }) {
+export function MapaBus({ asientos, elegidos, alElegir }) {
   const pisos = [...new Set(asientos.map((a) => a.piso))].sort()
   const [piso, setPiso] = useState(pisos[0] || 1)
   const delPiso = asientos.filter((a) => a.piso === piso)
