@@ -29,8 +29,6 @@ app.get('/api/salud', (req, res) => {
 
 // Tarea 0 - Autenticacion
 app.use('/api/auth', require('./modules/auth/auth.routes'))
-// GC-36 - Mi cuenta: datos propios y cambio de contraseña
-app.use('/api/cuenta', require('./modules/cuenta/cuenta.routes'))
 
 // Tarea 0 - Ciudades
 app.use('/api/ciudades', require('./modules/ciudades/ciudades.routes'))
@@ -46,6 +44,8 @@ app.use('/api/viajes', require('./modules/viajes/viajes.routes'))
 
 // Modulo de cooperativas
 app.use('/api/cooperativas', require('./modules/cooperativas/cooperativas.routes'))
+// GC-35 - Rutas destacadas (plan del administrador y marca de la cooperativa)
+app.use('/api/destacadas', require('./modules/destacadas/destacadas.routes'))
 
 // Frente B - Modulo de buses
 app.use('/api/buses', require('./modules/buses/buses.routes'))

@@ -19,6 +19,8 @@ async function buscarViajes(filtros) {
     SELECT v.id, v.fecha::text AS fecha,
            f.hora_salida::text AS hora_salida,
            f.tipo_viaje,
+           -- GC-35: ruta destacada solo si la cooperativa tiene el plan vigente
+           (f.destacada AND c.rutas_destacadas > 0 AND c.destacadas_hasta >= CURRENT_DATE) AS destacado,
            c.id AS cooperativa_id, c.nombre AS cooperativa,
            c.logo_url AS cooperativa_logo, c.color_primario AS cooperativa_color,
            c.color_acento AS cooperativa_acento, c.eslogan AS cooperativa_eslogan,
@@ -91,7 +93,8 @@ async function buscarViajes(filtros) {
       AND (v.fecha::timestamp + f.hora_salida + make_interval(mins => po.minutos_desde_salida)) > LOCALTIMESTAMP
       -- GC-14: solo viajes con asientos libres para todos los pasajeros buscados
       AND disponibles.asientos_libres >= $9
-    ORDER BY f.hora_salida, c.nombre, v.id
+    -- GC-35: primero los viajes destacados, luego por hora de salida
+    ORDER BY destacado DESC, f.hora_salida, c.nombre, v.id
   `
 
   const parametros = [

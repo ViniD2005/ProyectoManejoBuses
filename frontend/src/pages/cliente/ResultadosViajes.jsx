@@ -82,7 +82,8 @@ function ResultadosViajes() {
     return () => { activo = false }
   }, [base, aplicados])
 
-  const ordenados = useMemo(() => [...viajes].sort(ORDENES[orden]), [viajes, orden])
+  // GC-35: las rutas destacadas siempre van primero; dentro de cada grupo se respeta el orden elegido
+  const ordenados = useMemo(() => [...viajes].sort((a, b) => (Number(Boolean(b.destacado)) - Number(Boolean(a.destacado))) || ORDENES[orden](a, b)), [viajes, orden])
 
   function aplicarFiltros(evento) {
     evento.preventDefault()
@@ -241,8 +242,10 @@ function TarjetaViaje({ viaje, subida, bajada, pasajeros, abierto, alAlternar })
   const consulta = `subida=${subida}&bajada=${bajada}&pasajeros=${pasajeros}`
 
   return (
-    <article className={`viaje viaje--resultado ${abierto ? 'viaje--abierto' : ''}`} style={viaje.cooperativa_color ? { '--coop': viaje.cooperativa_color } : undefined}>
+    <article className={`viaje viaje--resultado ${abierto ? 'viaje--abierto' : ''} ${viaje.destacado ? 'viaje--destacado' : ''}`} style={viaje.cooperativa_color ? { '--coop': viaje.cooperativa_color } : undefined}>
       <div className="viaje__principal">
+        {/* GC-35: ruta destacada por la cooperativa */}
+        {viaje.destacado && <span className="viaje__destacado">★ Destacado</span>}
         {/* Lo que más le importa al pasajero: horas y tramo, en grande */}
         <div className="viaje__horas">
           <div>

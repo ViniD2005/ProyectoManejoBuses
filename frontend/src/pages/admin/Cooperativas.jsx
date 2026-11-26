@@ -22,13 +22,18 @@ export default function Cooperativas() {
   const [error, setError] = useState('')
   const [aviso, setAviso] = useState('')
   const [filtro, setFiltro] = useState('')
-  const [panel, setPanel] = useState(null) // { tipo: 'crear' | 'editar' | 'responsable', cooperativa }
+  const [panel, setPanel] = useState(null) // { tipo: 'crear' | 'editar' | 'responsable' | 'destacadas', cooperativa }
+  const [planes, setPlanes] = useState({}) // GC-35: plan de rutas destacadas por cooperativa
 
-  const cargar = () =>
-    api.get('/cooperativas/gestion')
+  const cargar = () => {
+    api.get('/destacadas/planes')
+      .then(({ data }) => setPlanes(Object.fromEntries(data.map((p) => [p.id, p]))))
+      .catch(() => {})
+    return api.get('/cooperativas/gestion')
       .then(({ data }) => setCooperativas(data))
       .catch((err) => setError(mensajeDeError(err)))
       .finally(() => setCargando(false))
+  }
 
   useEffect(() => {
     cargar()
@@ -135,8 +140,22 @@ export default function Cooperativas() {
                 </div>
               </div>
 
+              {/* GC-35: plan de rutas destacadas (pagado por fuera del sistema) */}
+              <div className="fila fila--entre" style={{ marginTop: '.75rem', fontSize: '.88rem' }}>
+                <span>
+                  <span className="texto-suave">Rutas destacadas: </span>
+                  {!planes[c.id]?.rutas_destacadas
+                    ? 'sin plan'
+                    : <>{planes[c.id].usadas} de {planes[c.id].rutas_destacadas} en uso · hasta {planes[c.id].destacadas_hasta}</>}
+                </span>
+                {planes[c.id]?.rutas_destacadas > 0 && (
+                  <span className={`insignia ${planes[c.id].vigente ? 'insignia--marca' : 'insignia--aviso'}`}>{planes[c.id].vigente ? '★ Vigente' : 'Vencido'}</span>
+                )}
+              </div>
+
               <div className="fila" style={{ marginTop: '1rem' }}>
                 <button type="button" className="btn btn-sm" onClick={() => { setPanel({ tipo: 'editar', cooperativa: c }); setAviso('') }}>Editar datos</button>
+                <button type="button" className="btn btn-sm" onClick={() => { setPanel({ tipo: 'destacadas', cooperativa: c }); setAviso('') }}>★ Rutas destacadas</button>
                 {c.activa && (
                   <button type="button" className="btn btn-sm" onClick={() => { setPanel({ tipo: 'responsable', cooperativa: c }); setAviso('') }}>+ Responsable</button>
                 )}
@@ -152,6 +171,7 @@ export default function Cooperativas() {
       {panel?.tipo === 'crear' && <PanelCooperativa alCerrar={() => setPanel(null)} alGuardar={alGuardar} />}
       {panel?.tipo === 'editar' && <PanelCooperativa cooperativa={panel.cooperativa} alCerrar={() => setPanel(null)} alGuardar={alGuardar} />}
       {panel?.tipo === 'responsable' && <PanelResponsable cooperativa={panel.cooperativa} alCerrar={() => setPanel(null)} alGuardar={alGuardar} />}
+      {panel?.tipo === 'destacadas' && <PanelDestacadas cooperativa={panel.cooperativa} plan={planes[panel.cooperativa.id]} alCerrar={() => setPanel(null)} alGuardar={alGuardar} />}
     </div>
   )
 }
@@ -458,6 +478,86 @@ function PanelResponsable({ cooperativa, alCerrar, alGuardar }) {
         <div className="panel__pie">
           <button type="button" className="btn" onClick={alCerrar}>Cancelar</button>
           <button className="btn btn-primary" disabled={enviando}>{enviando ? 'Guardando…' : 'Agregar responsable'}</button>
+        </div>
+      </form>
+    </div>
+  )
+}
+
+/*
+  GC-35: el administrador registra cuántas rutas puede destacar la cooperativa
+  y hasta qué fecha (el pago se hace por fuera del sistema).
+  Con 0 se quita el plan. Si baja el cupo, se quitan las destacadas más recientes.
+*/
+function PanelDestacadas({ cooperativa, plan, alCerrar, alGuardar }) {
+  const hoy = new Date().toLocaleDateString('en-CA')
+  const enUnAnio = (() => { const d = new Date(`${hoy}T12:00:00`); d.setFullYear(d.getFullYear() + 1); return d.toLocaleDateString('en-CA') })()
+  const [form, setForm] = useState({ cantidad: String(plan?.rutas_destacadas ?? 0), hasta: plan?.destacadas_hasta || '' })
+  const [errores, setErrores] = useState({})
+  const [error, setError] = useState('')
+  const [enviando, setEnviando] = useState(false)
+  const cantidad = Number(form.cantidad)
+  const usadas = plan?.usadas || 0
+
+  const revisar = () => {
+    const e = {}
+    if (form.cantidad === '' || !/^\d+$/.test(form.cantidad)) e.cantidad = 'Escribe un número entero (0 para quitar el plan)'
+    else if (cantidad > 20) e.cantidad = 'Máximo 20 rutas destacadas'
+    if (!e.cantidad && cantidad > 0) {
+      if (!form.hasta) e.hasta = 'Indica hasta qué fecha está pagado el plan'
+      else if (form.hasta < hoy) e.hasta = 'La fecha no puede ser anterior a hoy'
+      else if (form.hasta > enUnAnio) e.hasta = 'El plan puede registrarse por máximo un año'
+    }
+    setErrores(e)
+    return Object.keys(e).length === 0
+  }
+
+  const guardar = async (e) => {
+    e.preventDefault()
+    setError('')
+    if (!revisar()) return
+    setEnviando(true)
+    try {
+      const { data } = await api.put(`/destacadas/planes/${cooperativa.id}`, { cantidad, hasta: cantidad > 0 ? form.hasta : null })
+      alGuardar(cantidad === 0
+        ? `${cooperativa.nombre} ya no tiene rutas destacadas.`
+        : `${cooperativa.nombre} puede destacar ${cantidad} ruta(s) hasta el ${data.destacadas_hasta}.` + (data.quitadas ? ` Se quitaron ${data.quitadas} destacada(s) que superaban el cupo.` : ''))
+    } catch (err) {
+      setErrores(err.response?.data?.detalles || {})
+      setError(mensajeDeError(err))
+    } finally {
+      setEnviando(false)
+    }
+  }
+
+  return (
+    <div className="capa" onMouseDown={(e) => { if (e.target === e.currentTarget) alCerrar() }}>
+      <form className="panel" onSubmit={guardar} noValidate>
+        <div className="panel__cabecera">
+          <div>
+            <h2>Rutas destacadas</h2>
+            <p>{cooperativa.nombre}</p>
+          </div>
+          <button type="button" className="btn btn--fantasma btn--icono" onClick={alCerrar} aria-label="Cerrar">✕</button>
+        </div>
+        <div className="panel__cuerpo">
+          <div className="alerta alerta--info"><div><b>¿Cómo funciona?</b><div>La cooperativa paga el plan por fuera del sistema. Aquí registras cuántas de sus rutas aparecerán primero en la búsqueda de los clientes y hasta qué fecha.</div></div></div>
+          {error && <div className="alerta alerta--error" role="alert">{error}</div>}
+          <Campo nombre="cantidad" etiqueta="Rutas que puede destacar" type="number" min={0} max={20} inputMode="numeric"
+            valor={form.cantidad} alCambiar={(e) => { setForm({ ...form, cantidad: e.target.value }); setErrores({ ...errores, cantidad: '' }) }}
+            error={errores.cantidad} ayuda={`Entre 0 y 20. Hoy tiene ${usadas} ruta(s) destacada(s).`} />
+          {cantidad > 0 && (
+            <Campo nombre="hasta" etiqueta="Pagado hasta" type="date" min={hoy} max={enUnAnio}
+              valor={form.hasta} alCambiar={(e) => { setForm({ ...form, hasta: e.target.value }); setErrores({ ...errores, hasta: '' }) }}
+              error={errores.hasta} ayuda="Después de esta fecha sus rutas dejan de aparecer primero." />
+          )}
+          {!errores.cantidad && form.cantidad !== '' && cantidad < usadas && (
+            <div className="alerta alerta--aviso"><div><b>Se quitarán {usadas - cantidad} ruta(s) destacada(s)</b><div>Las marcadas más recientemente. La cooperativa recibirá una notificación.</div></div></div>
+          )}
+        </div>
+        <div className="panel__pie">
+          <button type="button" className="btn" onClick={alCerrar}>Cancelar</button>
+          <button className="btn btn-primary" disabled={enviando}>{enviando ? 'Guardando…' : 'Guardar plan'}</button>
         </div>
       </form>
     </div>

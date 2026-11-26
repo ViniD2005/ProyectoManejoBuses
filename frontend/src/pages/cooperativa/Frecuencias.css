@@ -25,3 +25,6 @@
 .frec__nueva-parada { padding: 0.9rem; border: 1px dashed var(--borde); border-radius: 12px; background: var(--fondo); }
 .frec__nueva-parada .rejilla-3 { align-items: end; }
 .frec__agregar { margin-bottom: 1rem; }
+
+/* GC-35 - Rutas destacadas */
+.frec__destacada { display: flex; width: max-content; margin-top: 0.3rem; }
