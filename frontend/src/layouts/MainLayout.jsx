@@ -65,8 +65,10 @@ const MENU = {
   personal_bus: [
     // GC-9: panel de inicio
     { grupo: 'General', enlaces: [{ a: '/panel', texto: 'Inicio', icono: 'inicio' }] },
+    // GC-34: sección del chofer
     { grupo: 'En el bus', enlaces: [
-      { a: '/personal/abordaje', texto: 'Abordaje', icono: 'qr' },
+      { a: '/chofer', texto: 'Viajes de hoy', icono: 'bus' },
+      { a: '/chofer/historial', texto: 'Mi historial', icono: 'documento' },
     ] },
   ],
 }
