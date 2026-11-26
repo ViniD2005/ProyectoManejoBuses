@@ -10,3 +10,7 @@
 .pasajero__registrado { display: block; margin-top: .35rem; color: var(--exito, #15803d); font-size: .82rem; font-weight: 700; }
 .pasajero__nota { margin: .75rem 0 0; padding: .6rem .8rem; border-radius: 10px; background: #fef6e4; color: #7a4a05; font-size: .85rem; font-weight: 600; }
 .descargar-todos { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; margin-top: 1rem; padding: .85rem 1rem; border-radius: 12px; background: #e8f7ee; color: #115e2f; font-weight: 650; }
+
+/* GC-31: el número de asiento se lee bien sobre el fondo oscuro */
+.boleto .boleto__asiento span { display: grid; justify-items: center; color: #fff; line-height: 1.1; }
+.boleto .boleto__asiento small { color: rgba(255, 255, 255, .8); }
