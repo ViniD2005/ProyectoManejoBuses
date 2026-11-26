@@ -100,8 +100,8 @@ app.use('/api/estructura-buses', require('./modules/estructura-buses/estructura-
 
 // CC-6 - Boletos en PDF con codigo QR
 app.use('/api/boletos', require('./modules/boletos/boletos.routes'))
-// CC-15 - Abordaje del personal del bus
-app.use('/api/accesos', require('./modules/accesos/accesos.routes'))
+// GC-34 - Sección del chofer: viajes, inicio/fin, validación de boletos, venta a bordo e historial
+app.use('/api/chofer', require('./modules/chofer/chofer.routes'))
 
 // ========================================
 // RUTAS NO ENCONTRADAS
