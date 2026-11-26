@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import api from '../../services/api.js'
+import FormCuentaBancaria from '../../components/FormCuentaBancaria.jsx'
 
 const VACIO = { nombre: '', ruc: '', telefono: '', email: '', direccion: '' }
 const NUEVO_VACIO = { cedula: '', nombres: '', apellidos: '', email: '', telefono: '', password: '' }
@@ -24,10 +25,14 @@ export default function Cooperativas() {
   const [filtro, setFiltro] = useState('')
   const [panel, setPanel] = useState(null) // { tipo: 'crear' | 'editar' | 'responsable' | 'destacadas', cooperativa }
   const [planes, setPlanes] = useState({}) // GC-35: plan de rutas destacadas por cooperativa
+  const [cuentas, setCuentas] = useState({}) // GC-43: cuenta bancaria de cada cooperativa
 
   const cargar = () => {
     api.get('/destacadas/planes')
       .then(({ data }) => setPlanes(Object.fromEntries(data.map((p) => [p.id, p]))))
+      .catch(() => {})
+    api.get('/cuentas-bancarias')
+      .then(({ data }) => setCuentas(Object.fromEntries(data.map((c) => [c.cooperativa_id, c.cuenta]))))
       .catch(() => {})
     return api.get('/cooperativas/gestion')
       .then(({ data }) => setCooperativas(data))
@@ -153,8 +158,18 @@ export default function Cooperativas() {
                 )}
               </div>
 
+              {/* GC-43: cuenta donde los clientes pagan a esta cooperativa */}
+              <div className="fila fila--entre" style={{ marginTop: '.4rem', fontSize: '.88rem' }}>
+                <span>
+                  <span className="texto-suave">Cuenta de cobro: </span>
+                  {cuentas[c.id] ? `${cuentas[c.id].banco} ···${cuentas[c.id].numero.slice(-4)}` : 'sin registrar'}
+                </span>
+                {!cuentas[c.id] && <span className="insignia insignia--aviso">No recibe pagos en línea</span>}
+              </div>
+
               <div className="fila" style={{ marginTop: '1rem' }}>
                 <button type="button" className="btn btn-sm" onClick={() => { setPanel({ tipo: 'editar', cooperativa: c }); setAviso('') }}>Editar datos</button>
+                <button type="button" className="btn btn-sm" onClick={() => { setPanel({ tipo: 'cuenta', cooperativa: c }); setAviso('') }}>Cuenta bancaria</button>
                 <button type="button" className="btn btn-sm" onClick={() => { setPanel({ tipo: 'destacadas', cooperativa: c }); setAviso('') }}>★ Rutas destacadas</button>
                 {c.activa && (
                   <button type="button" className="btn btn-sm" onClick={() => { setPanel({ tipo: 'responsable', cooperativa: c }); setAviso('') }}>+ Responsable</button>
@@ -171,6 +186,24 @@ export default function Cooperativas() {
       {panel?.tipo === 'crear' && <PanelCooperativa alCerrar={() => setPanel(null)} alGuardar={alGuardar} />}
       {panel?.tipo === 'editar' && <PanelCooperativa cooperativa={panel.cooperativa} alCerrar={() => setPanel(null)} alGuardar={alGuardar} />}
       {panel?.tipo === 'responsable' && <PanelResponsable cooperativa={panel.cooperativa} alCerrar={() => setPanel(null)} alGuardar={alGuardar} />}
+      {panel?.tipo === 'cuenta' && (
+        <div className="capa" onMouseDown={(e) => { if (e.target === e.currentTarget) setPanel(null) }}>
+          <div className="panel">
+            <div className="panel__cabecera">
+              <div>
+                <h2>Cuenta bancaria</h2>
+                <p>{panel.cooperativa.nombre}: aquí pagan sus clientes por transferencia o depósito</p>
+              </div>
+              <button type="button" className="btn btn--fantasma btn--icono" onClick={() => setPanel(null)} aria-label="Cerrar">✕</button>
+            </div>
+            <div className="panel__cuerpo">
+              <FormCuentaBancaria url={`/cuentas-bancarias/${panel.cooperativa.id}`} cuenta={cuentas[panel.cooperativa.id]}
+                cooperativa={panel.cooperativa} alCancelar={() => setPanel(null)}
+                alGuardar={(r) => { if (!r.sin_cambios) alGuardar(`Se guardó la cuenta bancaria de ${panel.cooperativa.nombre}. La cooperativa recibió un aviso.`) }} />
+            </div>
+          </div>
+        </div>
+      )}
       {panel?.tipo === 'destacadas' && <PanelDestacadas cooperativa={panel.cooperativa} plan={planes[panel.cooperativa.id]} alCerrar={() => setPanel(null)} alGuardar={alGuardar} />}
     </div>
   )
