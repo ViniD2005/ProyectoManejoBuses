@@ -10,6 +10,7 @@ rutas.use(autenticar, permitirRoles('admin', 'cooperativa'))
 rutas.get('/', controlador.listar)
 rutas.post('/', controlador.crear)
 rutas.patch('/:id/estado', controlador.cambiarEstado)
+rutas.patch('/:id/personal-bus', controlador.actualizarPersonalBus)  // GC-33: { cargo, licencia_tipo, licencia_vence }
 
 // CC-22: solo el administrador busca usuarios registrados y les asigna un rol
 rutas.get('/buscar', permitirRoles('admin'), controlador.buscar)          // ?texto=
