@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import api from '../../services/api.js'
 import { aplicarTema } from '../../utils/temaCooperativa.js'
+import FormCuentaBancaria from '../../components/FormCuentaBancaria.jsx'
 
 const VACIO = {
   color_primario: '#1f4e5f',
@@ -156,6 +157,9 @@ export default function MiCooperativa() {
 
       {/* GC-16: datos de contacto (tiene su propio botón de guardar) */}
       <DatosCooperativa cooperativa={cooperativa} alGuardar={(data) => { setCooperativa(data); aplicarTema(data) }} />
+
+      {/* GC-43: cuenta donde los clientes transfieren o depositan */}
+      <CuentaCobro cooperativa={cooperativa} />
 
       {error && <div className="alerta alerta--error" role="alert">{error}</div>}
       {aviso && <div className="alerta alerta--exito" role="status">{aviso}</div>}
@@ -368,6 +372,45 @@ function DatosCooperativa({ cooperativa, alGuardar }) {
         </div>
       </div>
     </form>
+  )
+}
+
+/*
+  GC-43: cuenta bancaria de la cooperativa. Los clientes que compran en línea por
+  transferencia o depósito pagan a esta cuenta; sin ella, la cooperativa solo vende
+  en ventanilla y a bordo. Cada cambio se avisa al administrador.
+*/
+function CuentaCobro({ cooperativa }) {
+  const [datos, setDatos] = useState(null)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    api.get('/cuentas-bancarias/mia')
+      .then(({ data }) => setDatos(data))
+      .catch((err) => setError(mensajeDeError(err)))
+  }, [])
+
+  return (
+    <section className="card">
+      <div className="card-header fila fila--entre">
+        <span>Cuenta bancaria para cobros</span>
+        {datos && (datos.cuenta
+          ? <span className="insignia insignia--exito">Recibe pagos en línea</span>
+          : <span className="insignia insignia--aviso">Sin cuenta: no recibe pagos en línea</span>)}
+      </div>
+      <div className="card-body">
+        <p className="texto-suave" style={{ marginTop: 0 }}>
+          Los clientes que compran en línea por transferencia o depósito pagan directamente a esta cuenta y tus oficinistas validan los comprobantes.
+          {datos?.cuenta?.actualizada_en && ` Última actualización: ${new Date(datos.cuenta.actualizada_en).toLocaleString('es-EC', { dateStyle: 'medium', timeStyle: 'short' })}`}
+        </p>
+        {error && <div className="alerta alerta--error" role="alert">{error}</div>}
+        {!datos && !error && <div className="cargando"><span className="giro" /> Cargando la cuenta…</div>}
+        {datos && (
+          <FormCuentaBancaria url="/cuentas-bancarias/mia" cuenta={datos.cuenta} cooperativa={{ nombre: cooperativa.nombre, ruc: cooperativa.ruc }}
+            alGuardar={(r) => setDatos(r)} />
+        )}
+      </div>
+    </section>
   )
 }
 
