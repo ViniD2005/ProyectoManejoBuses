@@ -221,6 +221,12 @@ const crearCooperativa = async (datos) => {
     )
     const cooperativaId = rows[0].id
 
+    // GC-41: tipo de asiento inicial para que la cooperativa pueda registrar buses de inmediato
+    await cliente.query(
+      "INSERT INTO tipo_asiento (cooperativa_id, nombre, factor_precio) VALUES ($1, 'Normal', 1.00)",
+      [cooperativaId]
+    )
+
     // GC-30: se crea la cuenta del responsable con el rol cooperativa
     const n = responsable.nuevo
     const hash = await bcrypt.hash(n.password, 10)
