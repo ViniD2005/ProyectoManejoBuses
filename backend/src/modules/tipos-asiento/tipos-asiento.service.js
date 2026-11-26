@@ -19,6 +19,17 @@ function validar({ nombre, factor_precio }) {
   if (Object.keys(errores).length) throw errorHttp('Revisa los datos del tipo de asiento', 400, errores)
 }
 
+// GC-33: no se repite el nombre en la misma cooperativa, sin importar mayúsculas ni espacios
+async function revisarNombre(cooperativaId, nombre, idActual = null) {
+  const { rows } = await pool.query(
+    `SELECT id FROM tipo_asiento
+      WHERE cooperativa_id = $1 AND LOWER(REGEXP_REPLACE(TRIM(nombre), '\\s+', ' ', 'g')) = LOWER($2)
+        AND ($3::int IS NULL OR id <> $3)`,
+    [cooperativaId, String(nombre).trim().replace(/\s+/g, ' '), idActual]
+  )
+  if (rows[0]) throw errorHttp('Revisa los datos del tipo de asiento', 409, { nombre: 'Ya tienes un tipo de asiento con ese nombre' })
+}
+
 // Todas las consultas filtran por la cooperativa del usuario que inició sesión
 async function listar(cooperativaId) {
   const { rows } = await pool.query(
@@ -30,22 +41,24 @@ async function listar(cooperativaId) {
 
 async function crear(cooperativaId, datos) {
   validar(datos)
+  await revisarNombre(cooperativaId, datos.nombre)
   const { rows } = await pool.query(
     `INSERT INTO tipo_asiento (cooperativa_id, nombre, factor_precio)
      VALUES ($1, $2, $3)
      RETURNING id, nombre, factor_precio`,
-    [cooperativaId, datos.nombre.trim(), Number(datos.factor_precio)]
+    [cooperativaId, datos.nombre.trim().replace(/\s+/g, ' '), Number(datos.factor_precio)]
   )
   return rows[0]
 }
 
 async function actualizar(cooperativaId, id, datos) {
   validar(datos)
+  await revisarNombre(cooperativaId, datos.nombre, id)
   const { rows } = await pool.query(
     `UPDATE tipo_asiento SET nombre = $1, factor_precio = $2
       WHERE id = $3 AND cooperativa_id = $4
       RETURNING id, nombre, factor_precio`,
-    [datos.nombre.trim(), Number(datos.factor_precio), id, cooperativaId]
+    [datos.nombre.trim().replace(/\s+/g, ' '), Number(datos.factor_precio), id, cooperativaId]
   )
   if (!rows[0]) throw errorHttp('Tipo de asiento no encontrado', 404)
   return rows[0]
