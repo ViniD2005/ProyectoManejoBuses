@@ -48,6 +48,7 @@ async function listar(cooperativaId) {
             f.fecha_resolucion::text AS fecha_resolucion,
             f.tipo_viaje,
             f.activa,
+            f.destacada, -- GC-35
             f.ciudad_origen_id,
             co.nombre AS origen,
             ${etiqueta('co', 'po')} AS origen_etiqueta,
@@ -272,7 +273,11 @@ async function cambiarEstado(cooperativaId, id, activa) {
     }
   }
   const { rows } = await pool.query(
-    `UPDATE frecuencia SET activa = $1 WHERE id = $2 AND cooperativa_id = $3 RETURNING id, activa`,
+    // GC-35: una frecuencia desactivada deja de estar destacada y libera el cupo
+    `UPDATE frecuencia SET activa = $1,
+            destacada = CASE WHEN $1 THEN destacada ELSE FALSE END,
+            destacada_en = CASE WHEN $1 THEN destacada_en ELSE NULL END
+      WHERE id = $2 AND cooperativa_id = $3 RETURNING id, activa`,
     [Boolean(activa), id, cooperativaId]
   )
   if (!rows[0]) throw errorHttp('Frecuencia no encontrada', 404)
